@@ -32,10 +32,10 @@ end
 
 local loadingthing = { Visible = false }
 local NotifLogs = {}
+local networkin = { incoming = {}, outgoing = {} }
+for i=1,21 do networkin.incoming[i]=0; networkin.outgoing[i]=0 end
+local graphs = { incoming={sides={},graph={},pos=Vector2.new()}, outgoing={sides={},graph={},pos=Vector2.new()}, other={} }
 local lasttick = 0
-
-networkin = networkin or {incoming={},outgoing={}}
-graphs = graphs or {incoming={sides={},graph={},pos={x=0,y=0}},outgoing={sides={},graph={},pos={x=0,y=0}},other={}}
 local PingStat = { GetValue = function() return 50 end }
 
 local COLOR = 1
@@ -274,7 +274,6 @@ do
 				note:Fade(k, length, dt)
 			end
 		end
-	end)
 
 	--ANCHOR how to create notification
 	--CreateNotification("Loading...")
@@ -513,10 +512,7 @@ CreateThread(function()
 	wait(2)
 	UnpackRelations()
 	WriteRelations()
-end)
 
--- ensure LOCAL_PLAYER exists
-local LOCAL_PLAYER = game:GetService("Players").LocalPlayer
 local LOCAL_MOUSE = LOCAL_PLAYER:GetMouse()
 local TEAMS = game:GetService("Teams")
 local INPUT_SERVICE = game:GetService("UserInputService")
@@ -714,7 +710,7 @@ local function KeyEnumToName(key) -- did this all in a function cuz why not
 		return "None"
 	end
 	local _key = tostring(key) .. "."
-	_key = _key:gsub("%.", ",")
+	local _key = _key:gsub("%.", ",")
 	local keyname = nil
 	local looptime = 0
 	for w in _key:gmatch("(.-),") do
@@ -769,7 +765,7 @@ local allrender = {}
 
 local RGB = Color3.fromRGB
 local Draw = {}
-do
+
 	function Draw:UnRender()
 		for k, v in pairs(allrender) do
 			for k1, v1 in pairs(v) do
@@ -1388,8 +1384,290 @@ do
 	end
 end
 
+--funny graf
+local networkin = {
+	incoming = {},
+	outgoing = {},
+}
 
--- (network graphs / stat menu removed — not needed for UI library)
+for i = 1, 21 do
+	networkin.incoming[i] = 20
+	networkin.outgoing[i] = 2
+end
+local lasttick = tick()
+
+local infopos = 400
+
+local graphs = {
+	incoming = {
+		pos = {
+			x = 35,
+			y = infopos,
+		},
+		sides = {},
+		graph = {},
+	},
+	outgoing = {
+		pos = {
+			x = 35,
+			y = infopos + 97,
+		},
+		sides = {},
+		graph = {},
+	},
+	other = {},
+}
+--- incoming
+Draw:OutlinedText(
+	"incoming kbps: 20",
+	2,
+	false,
+	graphs.incoming.pos.x - 1,
+	graphs.incoming.pos.y - 15,
+	13,
+	false,
+	{ 255, 255, 255, 255 },
+	{ 10, 10, 10 },
+	graphs.incoming.sides
+)
+Draw:OutlinedText(
+	"80",
+	2,
+	false,
+	graphs.incoming.pos.x - 21,
+	graphs.incoming.pos.y - 7,
+	13,
+	false,
+	{ 255, 255, 255, 255 },
+	{ 10, 10, 10 },
+	graphs.incoming.sides
+)
+
+Draw:FilledRect(
+	false,
+	graphs.incoming.pos.x - 1,
+	graphs.incoming.pos.y - 1,
+	222,
+	82,
+	{ 10, 10, 10, 50 },
+	graphs.incoming.sides
+)
+
+Draw:Line(
+	false,
+	3,
+	graphs.incoming.pos.x,
+	graphs.incoming.pos.y - 1,
+	graphs.incoming.pos.x,
+	graphs.incoming.pos.y + 82,
+	{ 20, 20, 20, 225 },
+	graphs.incoming.sides
+)
+Draw:Line(
+	false,
+	3,
+	graphs.incoming.pos.x,
+	graphs.incoming.pos.y + 80,
+	graphs.incoming.pos.x + 221,
+	graphs.incoming.pos.y + 80,
+	{ 20, 20, 20, 225 },
+	graphs.incoming.sides
+)
+Draw:Line(
+	false,
+	3,
+	graphs.incoming.pos.x,
+	graphs.incoming.pos.y,
+	graphs.incoming.pos.x - 6,
+	graphs.incoming.pos.y,
+	{ 20, 20, 20, 225 },
+	graphs.incoming.sides
+)
+
+Draw:Line(
+	false,
+	1,
+	graphs.incoming.pos.x,
+	graphs.incoming.pos.y,
+	graphs.incoming.pos.x,
+	graphs.incoming.pos.y + 80,
+	{ 255, 255, 255, 225 },
+	graphs.incoming.sides
+)
+Draw:Line(
+	false,
+	1,
+	graphs.incoming.pos.x,
+	graphs.incoming.pos.y + 80,
+	graphs.incoming.pos.x + 220,
+	graphs.incoming.pos.y + 80,
+	{ 255, 255, 255, 225 },
+	graphs.incoming.sides
+)
+Draw:Line(
+	false,
+	1,
+	graphs.incoming.pos.x,
+	graphs.incoming.pos.y,
+	graphs.incoming.pos.x - 5,
+	graphs.incoming.pos.y,
+	{ 255, 255, 255, 225 },
+	graphs.incoming.sides
+)
+
+for i = 1, 20 do
+	Draw:Line(false, 1, 10, 10, 10, 10, { 255, 255, 255, 225 }, graphs.incoming.graph)
+end
+
+Draw:Line(false, 1, 10, 10, 10, 10, { 68, 255, 0, 255 }, graphs.incoming.graph)
+Draw:OutlinedText("avg: 20", 2, false, 20, 20, 13, false, { 68, 255, 0, 255 }, { 10, 10, 10 }, graphs.incoming.graph)
+
+--- outgoing
+Draw:OutlinedText(
+	"outgoing kbps: 5",
+	2,
+	false,
+	graphs.outgoing.pos.x - 1,
+	graphs.outgoing.pos.y - 15,
+	13,
+	false,
+	{ 255, 255, 255, 255 },
+	{ 10, 10, 10 },
+	graphs.outgoing.sides
+)
+Draw:OutlinedText(
+	"10",
+	2,
+	false,
+	graphs.outgoing.pos.x - 21,
+	graphs.outgoing.pos.y - 7,
+	13,
+	false,
+	{ 255, 255, 255, 255 },
+	{ 10, 10, 10 },
+	graphs.outgoing.sides
+)
+
+Draw:FilledRect(
+	false,
+	graphs.outgoing.pos.x - 1,
+	graphs.outgoing.pos.y - 1,
+	222,
+	82,
+	{ 10, 10, 10, 50 },
+	graphs.outgoing.sides
+)
+
+Draw:Line(
+	false,
+	3,
+	graphs.outgoing.pos.x,
+	graphs.outgoing.pos.y - 1,
+	graphs.outgoing.pos.x,
+	graphs.outgoing.pos.y + 82,
+	{ 20, 20, 20, 225 },
+	graphs.outgoing.sides
+)
+Draw:Line(
+	false,
+	3,
+	graphs.outgoing.pos.x,
+	graphs.outgoing.pos.y + 80,
+	graphs.outgoing.pos.x + 221,
+	graphs.outgoing.pos.y + 80,
+	{ 20, 20, 20, 225 },
+	graphs.outgoing.sides
+)
+Draw:Line(
+	false,
+	3,
+	graphs.outgoing.pos.x,
+	graphs.outgoing.pos.y,
+	graphs.outgoing.pos.x - 6,
+	graphs.outgoing.pos.y,
+	{ 20, 20, 20, 225 },
+	graphs.outgoing.sides
+)
+
+Draw:Line(
+	false,
+	1,
+	graphs.outgoing.pos.x,
+	graphs.outgoing.pos.y,
+	graphs.outgoing.pos.x,
+	graphs.outgoing.pos.y + 80,
+	{ 255, 255, 255, 225 },
+	graphs.outgoing.sides
+)
+Draw:Line(
+	false,
+	1,
+	graphs.outgoing.pos.x,
+	graphs.outgoing.pos.y + 80,
+	graphs.outgoing.pos.x + 220,
+	graphs.outgoing.pos.y + 80,
+	{ 255, 255, 255, 225 },
+	graphs.outgoing.sides
+)
+Draw:Line(
+	false,
+	1,
+	graphs.outgoing.pos.x,
+	graphs.outgoing.pos.y,
+	graphs.outgoing.pos.x - 5,
+	graphs.outgoing.pos.y,
+	{ 255, 255, 255, 225 },
+	graphs.outgoing.sides
+)
+
+for i = 1, 20 do
+	Draw:Line(false, 1, 10, 10, 10, 10, { 255, 255, 255, 225 }, graphs.outgoing.graph)
+end
+
+Draw:Line(false, 1, 10, 10, 10, 10, { 68, 255, 0, 255 }, graphs.outgoing.graph)
+Draw:OutlinedText("avg: 20", 2, false, 20, 20, 13, false, { 68, 255, 0, 255 }, { 10, 10, 10 }, graphs.outgoing.graph)
+-- the fuckin fps and stuff i think xDDDDDd
+
+Draw:OutlinedText(
+	"loading...",
+	2,
+	false,
+	35,
+	infopos + 180,
+	13,
+	false,
+	{ 255, 255, 255, 255 },
+	{ 10, 10, 10 },
+	graphs.other
+)
+
+Draw:OutlinedText(
+	"[DEBUG LOGS]",
+	2,
+	false,
+	35,
+	infopos - 200,
+	13,
+	false,
+	{ 255, 255, 255, 255 },
+	{ 10, 10, 10 },
+	graphs.other
+)
+
+-- finish
+
+local loadingthing = Draw:OutlinedText(
+	"Loading...",
+	2,
+	true,
+	math.floor(SCREEN_SIZE.x / 16),
+	math.floor(SCREEN_SIZE.y / 16),
+	13,
+	true,
+	{ 255, 50, 200, 255 },
+	{ 0, 0, 0 }
+)
+
 
 function menu.Initialize(menutable)
 	local bbmenu = {} -- this one is for the rendering n shi
@@ -3380,7 +3658,7 @@ function menu.Initialize(menutable)
 						end
 					end
 					if v2[2] == COMBOBOX and v2[5] then
-						if not menu:MouseInMenu(v2[3][1], v2[3][2], v2[3][3], 24 * ((type(v2[1])=="table" and #v2[1] or 0) + 1) + 3) then
+						if not menu:MouseInMenu(v2[3][1], v2[3][2], v2[3][3], 24 * (#v2[1] + 1) + 3) then
 							menu:SetDropBox(false, 400, 200, 160, 1, { "HI q", "HI q", "HI q" })
 							v2[5] = false
 						else
@@ -3847,7 +4125,8 @@ function menu.Initialize(menutable)
 												v2[3][1] + menu.x + 1,
 												v2[3][2] + menu.y + 13,
 												v2[3][3],
-												v2[1] or v2[6] or {}
+												v2[1],
+												v2[6]
 											)
 											newdropbox_open = v2
 										else
@@ -3855,9 +4134,9 @@ function menu.Initialize(menutable)
 											v2[5] = false
 											newdropbox_open = nil
 										end
-									elseif menu:MouseInMenu(v2[3][1], v2[3][2], v2[3][3], 24 * ((type(v2[1])=="table" and #v2[1] or 0) + 1) + 3) and v2[5]
+									elseif menu:MouseInMenu(v2[3][1], v2[3][2], v2[3][3], 24 * (#v2[1] + 1) + 3) and v2[5]
 									then
-										for i = 1, (type(v2[1])=="table" and #v2[1] or 0) do
+										for i = 1, #v2[1] do
 											if menu:MouseInMenu(
 													v2[3][1],
 													v2[3][2] + 36 + ((i - 1) * 22),
@@ -3884,7 +4163,8 @@ function menu.Initialize(menutable)
 													v2[3][1] + menu.x + 1,
 													v2[3][2] + menu.y + 13,
 													v2[3][3],
-													v2[1] or v2[6] or {}
+													v2[1],
+													v2[6]
 												)
 											end
 										end
@@ -4504,8 +4784,23 @@ function menu.Initialize(menutable)
 				end
 			end
 			if input.KeyCode == Enum.KeyCode.F2 then
-				-- network stat graphs removed from UI library
 				menu.stat_menu = not menu.stat_menu
+
+				for k, v in pairs(graphs) do
+					if k ~= "other" then
+						for k1, v1 in pairs(v) do
+							if k1 ~= "pos" then
+								for k2, v2 in pairs(v1) do
+									v2.Visible = menu.stat_menu
+								end
+							end
+						end
+					end
+				end
+
+				for k, v in pairs(graphs.other) do
+					v.Visible = menu.stat_menu
+				end
 			end
 		end
 	end)
@@ -4563,22 +4858,27 @@ function menu.Initialize(menutable)
 			menu:pfunload()
 		end
 
-		pcall(function() Draw:UnRender() end)
-		-- clear refs without strict-nil type errors
-		CreateNotification = function() end
-		if type(allrender) == "table" then
-			table.clear(allrender)
-		end
+		Draw:UnRender()
+		CreateNotification = nil
+		allrender = nil
+		menu = nil
+		Draw = nil
 		self.unloaded = true
 	end
 end
+
+local avgfps = 100
+
+-- I STOLE THE FPS COUNTER FROM https://devforum.roblox.com/t/get-client-fps-trough-a-script/282631/14 ðŸ˜¿ðŸ˜¿ðŸ˜¿ðŸ˜¢ðŸ˜­
+-- fixed ur shitty fps counter
+local StatMenuRendered = event.new("StatMenuRendered")
 
 
 -- Simplified menu heartbeat (bounds only, no network graphs)
 if not menu.connections then menu.connections = {} end
 menu.connections.heartbeatmenu = RunService.Heartbeat:Connect(function()
     if not menu.open then return end
-    SCREEN_SIZE = workspace.CurrentCamera.ViewportSize
+    local SCREEN_SIZE = workspace.CurrentCamera.ViewportSize
     if menu.y < 0 then
         menu.y = 0
         menu:SetMenuPos(menu.x, 0)
@@ -4609,7 +4909,6 @@ menu.LIST = LIST
 menu.TEXTBOX = TEXTBOX
 menu.COMBOBOX = COMBOBOX
 menu.DOUBLE_COLORPICKERS = DOUBLE_COLORPICKERS
-menu.DOUBLE_COLORPICKER = DOUBLE_COLORPICKERS
 menu.CreateNotification = CreateNotification
 menu.Draw = Draw
 
