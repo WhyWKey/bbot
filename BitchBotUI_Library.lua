@@ -314,26 +314,34 @@ function Library.new(opts)
 
     -- Mouse: original BBOT used LOCAL_MOUSE with Y compared as menu.y - 36
     -- Drawing space ≈ Mouse.Y + GuiInset.Y on many clients; we expose modes.
-    self.mouseMode = opts.mouseMode or "legacy" -- legacy matches original best
+    self.mouseMode = opts.mouseMode or "inset" -- v3-style GetMouseLocation - GuiInset
     self.mouseOffsetX = opts.mouseOffsetX or 0
     self.mouseOffsetY = opts.mouseOffsetY or 0
 
     return self
 end
 
--- Cursor in Drawing coordinates (matches original hit tests when mode=legacy)
+-- Cursor in Drawing coordinates
+-- Reference: BBOT v3 (i77lhm) uses GetMouseLocation() - GuiInset for screen math.
+-- Original v2 used LOCAL_MOUSE with Y+36 in hit tests.
 function Library:GetCursor()
-    local ox, oy = self.mouseOffsetX, self.mouseOffsetY
-    if self.mouseMode == "legacy" then
-        -- Original: LOCAL_MOUSE.y > menu.y - 36 + y  ⇒  cursorY = Mouse.Y + 36
+    local ox, oy = self.mouseOffsetX or 0, self.mouseOffsetY or 0
+    local mode = self.mouseMode or "inset"
+
+    if mode == "legacy" then
+        -- Original v2: MouseInMenu compared LOCAL_MOUSE.y to menu.y - 36 + relY
         return Mouse.X + ox, Mouse.Y + 36 + oy
-    elseif self.mouseMode == "inset" then
+    elseif mode == "mouse" then
+        -- Player:GetMouse() space (no inset) — same as v3 Instance hover
+        return Mouse.X + ox, Mouse.Y + oy
+    elseif mode == "raw" then
+        local p = UserInputService:GetMouseLocation()
+        return p.X + ox, p.Y + oy
+    else
+        -- default "inset": v3 colorpicker style — GetMouseLocation minus GuiInset
         local p = UserInputService:GetMouseLocation()
         local inset = GuiService:GetGuiInset()
         return p.X - inset.X + ox, p.Y - inset.Y + oy
-    else -- raw
-        local p = UserInputService:GetMouseLocation()
-        return p.X + ox, p.Y + oy
     end
 end
 
