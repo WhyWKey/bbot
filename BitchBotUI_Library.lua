@@ -624,15 +624,17 @@ function Library:UpdateTabVisuals()
                 d.Visible = active and self.open
             end
             for _, opt in ipairs(g.options) do
+                -- main control drawings
                 for _, d in ipairs(opt.drawings) do
-                    local show = active and self.open
-                    if opt.type == DROPBOX and opt.items then
-                        -- dropdown items only when open
-                        if d._isItem then
-                            show = show and opt.open
-                        end
+                    d.Visible = active and self.open
+                end
+                -- dropdown items: ONLY if this dropdown is open
+                if opt.type == DROPBOX and opt.items then
+                    local showItems = active and self.open and opt.open
+                    for _, item in ipairs(opt.items) do
+                        item.bg.Visible = showItems
+                        item.text.Visible = showItems
                     end
-                    d.Visible = show
                 end
             end
         end
@@ -791,19 +793,21 @@ function Library:BuildDropbox(tab, group, opt, gx, y, gw, visible)
     opt._text = self:RText(list, tostring(opt.values[opt.value] or "?"), visible, gx+14, y+16, false)
     self:RText(list, "-", visible, gx+8+length-17, y+16, false)
     opt.hit = { x=gx+8, y=y+12, w=length, h=22 }
-    -- items (start hidden)
+    opt.open = false
+    -- items ALWAYS start hidden; stored separately so tab show/hide won't force them on
     opt.items = {}
     for i, name in ipairs(opt.values) do
         local iy = y + 34 + (i-1)*18
         local bg = self:RFill(list, false, gx+8, iy, length, 18, {25,25,25})
-        bg._isItem = true
+        bg.Visible = false
         local tx = self:RText(list, tostring(name), false, gx+14, iy+2, false)
-        tx._isItem = true
+        tx.Visible = false
         opt.items[#opt.items+1] = { bg=bg, text=tx, x=gx+8, y=iy, w=length, h=18, value=i }
     end
 end
 
 function Library:OpenDropdown(opt)
+    -- close any other open dropdown first
     if self.openDropdown and self.openDropdown ~= opt then
         self:CloseDropdown()
     end
@@ -817,11 +821,23 @@ end
 
 function Library:CloseDropdown()
     local opt = self.openDropdown
-    if not opt then return end
-    opt.open = false
-    for _, item in ipairs(opt.items or {}) do
-        item.bg.Visible = false
-        item.text.Visible = false
+    if opt then
+        opt.open = false
+        for _, item in ipairs(opt.items or {}) do
+            item.bg.Visible = false
+            item.text.Visible = false
+        end
+    end
+    -- also force-close every dropbox (safety)
+    for _, c in ipairs(self.controls) do
+        local o = c.opt
+        if o.type == DROPBOX then
+            o.open = false
+            for _, item in ipairs(o.items or {}) do
+                item.bg.Visible = false
+                item.text.Visible = false
+            end
+        end
     end
     self.openDropdown = nil
 end
@@ -874,11 +890,11 @@ function Library:BuildWatermark()
     self.watermark._text = t
 end
 
-function Library:BuildPlayerList(tab)
-    -- optional full-width group at top of Settings
-    local list = {}
+function Library:BuildPlayerList(tab, group)
+    local list = group.drawings
     local visible = (tab.index == self.activetab)
     local x, y, w, h = 16, 56, self.w - 32, 200
+    group.gx, group.gy, group.gw, group.gh = x, y, w, h
     self:CoolBox(list, visible, x, y, w, h, "Player List")
     self:RText(list, "Name", visible, x+10, y+22, false)
     self:RText(list, "Team", visible, x+math.floor(w/3)+10, y+22, false)
@@ -888,17 +904,14 @@ function Library:BuildPlayerList(tab)
     for i = 1, 6 do
         local iy = y + 42 + (i-1)*22
         local n = self:RText(list, "", visible, x+10, iy, false)
-        local t = self:RText(list, "", visible, x+math.floor(w/3)+10, iy, false)
+        local team = self:RText(list, "", visible, x+math.floor(w/3)+10, iy, false)
         local s = self:RText(list, "", visible, x+math.floor(2*w/3)+10, iy, false)
-        rows[i] = {n,t,s}
+        rows[i] = {n, team, s}
         if i < 6 then self:ROutline(list, visible, x+8, iy+18, w-16, 1, {20,20,20}) end
     end
-    -- attach to a synthetic group so tab visibility works
-    local g = { name="Player List", drawings=list, options={}, side="left" }
-    tab.groups = { g, unpack(tab.groups) }
     self.playerList = { rows=rows, drawings=list }
     self:RefreshPlayerList()
-    return 210
+    return 210 -- height used
 end
 
 function Library:RefreshPlayerList()
@@ -921,14 +934,12 @@ end
 
 function Library:LayoutTab(tab)
     local yLeft, yRight = 0, 0
-    -- player list first if Settings
-    if tab.name == "Settings" and self.playerList == nil then
-        -- built separately if requested
-    end
     for _, group in ipairs(tab.groups) do
         if group.name == "Player List" then
-            -- already positioned
-            yLeft = math.max(yLeft, 210)
+            -- full-width block; push BOTH columns below it
+            local h = self:BuildPlayerList(tab, group)
+            yLeft = math.max(yLeft, h)
+            yRight = math.max(yRight, h)
             continue
         end
         local isLeft = group.side == "left"
@@ -994,6 +1005,16 @@ function Library:SetupInput()
         if not self.open then return end
         if input.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
         self.mousedown = true
+
+        -- Prefer the click's own position for this frame (most accurate)
+        if input.Position then
+            self._clickX = input.Position.X
+            self._clickY = input.Position.Y
+            if self.mouseMode == "legacy" then
+                -- input.Position is typically already in inset-aware space;
+                -- legacy drawing compares using Mouse.Y+36. Keep GetCursor for drag.
+            end
+        end
 
         -- drag
         if self:MouseIn(0, 0, self.w, 25) then
@@ -1109,9 +1130,6 @@ function Library:SetupInput()
         if self.dragging then
             local mx, my = self:GetCursor()
             self:SetPos(mx - self.dragOffset.X, my - self.dragOffset.Y)
-        else
-            -- keep everything synced (fixes tab switch after drag)
-            self:SyncPositions()
         end
         for _, o in ipairs(self.watermark.objects) do
             o.Visible = self.watermark.visible
