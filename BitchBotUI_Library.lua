@@ -375,6 +375,8 @@ function Library.new(opts)
     self.mouseOffsetX = opts.mouseOffsetX or 0
     self.mouseOffsetY = opts.mouseOffsetY or 0
     self.mouseMode = opts.mouseMode or "raw"
+    self.cursorX = 0
+    self.cursorY = 0
     self.playerListVisual = nil
     self.playerListMaxRows = 6
     self.watermark = {
@@ -390,49 +392,78 @@ function Library.new(opts)
     return self
 end
 
--- Mouse position for Drawing API
--- Some executors need GuiInset subtracted; others don't.
--- self.mouseOffsetY can be tuned if clicks are still high/low.
-local GuiService = game:GetService("GuiService")
-local function getMouse(menu)
-    local p = UserInputService:GetMouseLocation()
-    local ox = (menu and menu.mouseOffsetX) or 0
-    local oy = (menu and menu.mouseOffsetY) or 0
-    -- mode: "raw" = GetMouseLocation as-is (default)
-    --       "inset" = subtract GuiInset
-    --       "legacy" = LOCAL_MOUSE with -36 (original bitchbot)
-    local mode = (menu and menu.mouseMode) or "raw"
-    if mode == "inset" then
-        local inset = GuiService:GetGuiInset()
-        return p.X - inset.X + ox, p.Y - inset.Y + oy
-    elseif mode == "legacy" then
-        return LOCAL_MOUSE.X + ox, LOCAL_MOUSE.Y + 36 + oy
+-- ============================================================
+-- MOUSE + POSITION (rewritten)
+-- Cursor is tracked from input events + polled each frame.
+-- All drawings are force-synced to menu x/y every frame.
+-- ============================================================
+function Library:UpdateCursorFromInput(input)
+    if input and input.Position then
+        self.cursorX = input.Position.X
+        self.cursorY = input.Position.Y
     end
-    return p.X + ox, p.Y + oy
+end
+
+function Library:PollCursor()
+    local ok, p = pcall(function()
+        return UserInputService:GetMouseLocation()
+    end)
+    if not (ok and p) then return end
+    local mode = self.mouseMode or "raw"
+    local ox = self.mouseOffsetX or 0
+    local oy = self.mouseOffsetY or 0
+    if mode == "inset" then
+        local inset = game:GetService("GuiService"):GetGuiInset()
+        self.cursorX = p.X - inset.X + ox
+        self.cursorY = p.Y - inset.Y + oy
+    elseif mode == "legacy" then
+        self.cursorX = LOCAL_MOUSE.X + ox
+        self.cursorY = LOCAL_MOUSE.Y + 36 + oy
+    elseif mode == "legacy2" then
+        self.cursorX = LOCAL_MOUSE.X + ox
+        self.cursorY = LOCAL_MOUSE.Y + oy
+    elseif mode == "input" then
+        -- Do not overwrite cursor from GetMouseLocation.
+        -- Cursor is owned by UpdateCursorFromInput only.
+        return
+    else
+        self.cursorX = p.X + ox
+        self.cursorY = p.Y + oy
+    end
+end
+
+function Library:GetCursor()
+    return self.cursorX or 0, self.cursorY or 0
 end
 
 function Library:MouseInMenu(x, y, width, height)
-    local mx, my = getMouse(self)
-    return mx > self.x + x
-        and mx < self.x + x + width
-        and my > self.y + y
-        and my < self.y + y + height
+    local mx, my = self:GetCursor()
+    return mx >= (self.x + x)
+        and mx <= (self.x + x + width)
+        and my >= (self.y + y)
+        and my <= (self.y + y + height)
 end
 
 function Library:MouseInArea(x, y, width, height)
-    local mx, my = getMouse(self)
-    return mx > x and mx < x + width and my > y and my < y + height
+    local mx, my = self:GetCursor()
+    return mx >= x and mx <= (x + width) and my >= y and my <= (y + height)
 end
 
 function Library:SetMenuPos(x, y)
     self.x = x
     self.y = y
-    -- MUST update every object, including hidden tab content.
-    -- Otherwise switching tabs after drag leaves groups at the old screen position.
-    for _, v in pairs(self.postable) do
-        if v[1] then
+    self:SyncAllPositions()
+end
+
+function Library:SyncAllPositions()
+    local x, y = self.x, self.y
+    local list = self.postable
+    for i = 1, #list do
+        local v = list[i]
+        local obj = v and v[1]
+        if obj then
             pcall(function()
-                v[1].Position = Vector2.new(x + v[2], y + v[3])
+                obj.Position = Vector2.new(x + v[2], y + v[3])
             end)
         end
     end
@@ -816,7 +847,7 @@ function Library:SwitchTab(idx)
     if self.openDropdown then self:CloseDropdown() end
     self.activetab = idx
     -- re-sync every drawing to current menu position (fixes drag + tab switch desync)
-    self:SetMenuPos(self.x, self.y)
+    self:SyncAllPositions()
     self:UpdateTabBar()
     for tabIdx, content in pairs(self.tabz) do
         local show = (tabIdx == idx) and self.open
@@ -905,30 +936,68 @@ function Library:SetVal(tab, groupbox, name, value)
 end
 
 function Library:SetupInput()
+    self.cursorX, self.cursorY = 0, 0
+    self:PollCursor()
+
+    table.insert(self.connections, UserInputService.InputChanged:Connect(function(input)
+        if self.unloaded then return end
+        if input.UserInputType == Enum.UserInputType.MouseMovement then
+            self:UpdateCursorFromInput(input)
+            if self.activeSlider and self.mousedown then
+                local opt = self.activeSlider
+                local mx = self.cursorX
+                local rel = clamp((mx - (self.x + opt.hx)) / math.max(opt.hw, 1), 0, 1)
+                opt.value = opt.min + rel * (opt.max - opt.min)
+                self:UpdateSliderVisual(opt)
+            end
+        end
+    end))
+
     table.insert(self.connections, UserInputService.InputBegan:Connect(function(input, gpe)
         if self.unloaded then return end
 
-        -- Toggle menu
+        if input.UserInputType == Enum.UserInputType.MouseButton1
+            or input.UserInputType == Enum.UserInputType.MouseButton2
+            or input.UserInputType == Enum.UserInputType.MouseMovement then
+            self:UpdateCursorFromInput(input)
+        end
+
         if input.KeyCode == self.keybind then
             self:SetVisible(not self.open)
             Library.CreateNotification(self.open and "Menu opened" or "Menu closed")
             return
         end
 
+        for _, c in ipairs(self.controls) do
+            local opt = c.opt
+            if opt.type == KEYBIND and opt.listening then
+                if input.KeyCode and input.KeyCode ~= Enum.KeyCode.Unknown then
+                    opt.value = input.KeyCode
+                    opt.listening = false
+                    if opt.text then opt.text.Text = KeyEnumToName(opt.value) end
+                    Library.CreateNotification(tostring(c.name) .. " = " .. KeyEnumToName(opt.value))
+                    return
+                end
+            end
+        end
+
         if not self.open then return end
         if input.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
 
         self.mousedown = true
+        self:UpdateCursorFromInput(input)
+        if not (input.Position and input.Position.X) then
+            self:PollCursor()
+        end
 
-        -- Drag window (title bar area)
+        local mx, my = self:GetCursor()
+
         if self:MouseInMenu(0, 0, self.w, 25) then
             self.dragging = true
-            local mx, my = getMouse(self)
             self.dragOffset = Vector2.new(mx - self.x, my - self.y)
             return
         end
 
-        -- Tabs
         for _, tb in ipairs(self.tabButtons) do
             if self:MouseInMenu(tb.x, tb.y, tb.w, tb.h) then
                 self:SwitchTab(tb.index)
@@ -936,7 +1005,6 @@ function Library:SetupInput()
             end
         end
 
-        -- Open dropdown item click
         if self.openDropdown then
             local opt = self.openDropdown
             for _, item in ipairs(opt.items or {}) do
@@ -949,17 +1017,14 @@ function Library:SetupInput()
                     return
                 end
             end
-            -- click outside closes
             if not self:MouseInMenu(opt.hx, opt.hy, opt.hw, opt.hh) then
                 self:CloseDropdown()
             end
         end
 
-        -- Controls on active tab
         for _, c in ipairs(self.controls) do
             if c.tab ~= self.activetab then continue end
             local opt = c.opt
-
             if opt.type == TOGGLE then
                 if self:MouseInMenu(opt.hx, opt.hy, opt.hw, opt.hh) then
                     opt.value = not opt.value
@@ -969,8 +1034,7 @@ function Library:SetupInput()
             elseif opt.type == SLIDER then
                 if self:MouseInMenu(opt.hx, opt.hy, opt.hw, opt.hh) then
                     self.activeSlider = opt
-                    local mx = getMouse(self)
-                    local rel = clamp((mx - (self.x + opt.hx)) / opt.hw, 0, 1)
+                    local rel = clamp((mx - (self.x + opt.hx)) / math.max(opt.hw, 1), 0, 1)
                     opt.value = opt.min + rel * (opt.max - opt.min)
                     self:UpdateSliderVisual(opt)
                     return
@@ -982,35 +1046,15 @@ function Library:SetupInput()
                 end
             elseif opt.type == BUTTON then
                 if self:MouseInMenu(opt.hx, opt.hy, opt.hw, opt.hh) then
-                    if opt.callback then
-                        pcall(opt.callback)
-                    else
-                        Library.CreateNotification("Clicked: "..tostring(c.name))
-                    end
+                    if opt.callback then pcall(opt.callback)
+                    else Library.CreateNotification("Clicked: " .. tostring(c.name)) end
                     return
                 end
             elseif opt.type == KEYBIND then
                 if self:MouseInMenu(opt.hx, opt.hy, opt.hw, opt.hh) then
                     opt.listening = true
                     if opt.text then opt.text.Text = "..." end
-                    Library.CreateNotification("Press a key for "..tostring(c.name))
-                    return
-                end
-            end
-        end
-    end))
-
-    -- Keybind capture
-    table.insert(self.connections, UserInputService.InputBegan:Connect(function(input, gpe)
-        if self.unloaded then return end
-        for _, c in ipairs(self.controls) do
-            local opt = c.opt
-            if opt.type == KEYBIND and opt.listening then
-                if input.KeyCode and input.KeyCode ~= Enum.KeyCode.Unknown then
-                    opt.value = input.KeyCode
-                    opt.listening = false
-                    if opt.text then opt.text.Text = KeyEnumToName(opt.value) end
-                    Library.CreateNotification(c.name.." = "..KeyEnumToName(opt.value))
+                    Library.CreateNotification("Press a key for " .. tostring(c.name))
                     return
                 end
             end
@@ -1025,29 +1069,22 @@ function Library:SetupInput()
         end
     end))
 
-    table.insert(self.connections, UserInputService.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement and self.activeSlider and self.mousedown then
-            local opt = self.activeSlider
-            local mx = getMouse(self)
-            local rel = clamp((mx - (self.x + opt.hx)) / opt.hw, 0, 1)
-            opt.value = opt.min + rel * (opt.max - opt.min)
-            self:UpdateSliderVisual(opt)
-        end
-    end))
-
     table.insert(self.connections, RunService.RenderStepped:Connect(function()
         if self.unloaded then return end
+        self:PollCursor()
         if self.dragging then
-            local mx, my = getMouse(self)
-            self:SetMenuPos(mx - self.dragOffset.X, my - self.dragOffset.Y)
+            local mx, my = self:GetCursor()
+            self.x = mx - self.dragOffset.X
+            self.y = my - self.dragOffset.Y
         end
+        -- Force-sync every frame so tab switch after drag can never desync
+        self:SyncAllPositions()
         for _, o in pairs(self.watermark.objects) do
             o.Visible = self.watermark.visible
         end
     end))
 end
 
--- Player list
 function Library:BuildPlayerList(x, y, w, h, tabIndex)
     tabIndex = tabIndex or self.activetab
     local g = self.tabz[tabIndex] or self.bbmenu
