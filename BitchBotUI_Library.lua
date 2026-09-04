@@ -385,19 +385,23 @@ function Library.new(opts)
     return self
 end
 
--- Original mouse hit test (the -36 is critical)
+-- Mouse position helper (GetMouseLocation matches Drawing screen space)
+local function getMouse()
+    local p = UserInputService:GetMouseLocation()
+    return p.X, p.Y
+end
+
 function Library:MouseInMenu(x, y, width, height)
-    return LOCAL_MOUSE.X > self.x + x
-        and LOCAL_MOUSE.X < self.x + x + width
-        and LOCAL_MOUSE.Y > self.y - 36 + y
-        and LOCAL_MOUSE.Y < self.y - 36 + y + height
+    local mx, my = getMouse()
+    return mx > self.x + x
+        and mx < self.x + x + width
+        and my > self.y + y
+        and my < self.y + y + height
 end
 
 function Library:MouseInArea(x, y, width, height)
-    return LOCAL_MOUSE.X > x
-        and LOCAL_MOUSE.X < x + width
-        and LOCAL_MOUSE.Y > 36 + y
-        and LOCAL_MOUSE.Y < 36 + y + height
+    local mx, my = getMouse()
+    return mx > x and mx < x + width and my > y and my < y + height
 end
 
 function Library:SetMenuPos(x, y)
@@ -678,11 +682,12 @@ function Library:Initialize(menutable)
                         opt.items = {}
                         for i, vname in ipairs(values) do
                             local iy = cy + 34 + (i-1)*18
-                            addFill(false, gx+8, iy, length, 18, {25,25,25,255})
+                            -- create hidden (start Visible=false after insert)
+                            addFill(gx+8, iy, length, 18, {25,25,25,255})
                             local bg = contentGroup[#contentGroup]
+                            bg.Visible = false
                             local it = addText(tostring(vname), false, gx+14, iy+2)
                             it.Visible = false
-                            bg.Visible = false
                             table.insert(opt.items, {bg=bg, text=it, x=gx+8, y=iy, w=length, h=18, value=i})
                         end
                         self.options[tab.name][gname][cname] = opt
@@ -884,7 +889,8 @@ function Library:SetupInput()
         -- Drag window (title bar area)
         if self:MouseInMenu(0, 0, self.w, 25) then
             self.dragging = true
-            self.dragOffset = Vector2.new(LOCAL_MOUSE.X - self.x, LOCAL_MOUSE.Y - self.y)
+            local mx, my = UserInputService:GetMouseLocation()
+            self.dragOffset = Vector2.new(mx - self.x, my - self.y)
             return
         end
 
@@ -929,7 +935,8 @@ function Library:SetupInput()
             elseif opt.type == SLIDER then
                 if self:MouseInMenu(opt.hx, opt.hy, opt.hw, opt.hh) then
                     self.activeSlider = opt
-                    local rel = clamp((LOCAL_MOUSE.X - (self.x + opt.hx)) / opt.hw, 0, 1)
+                    local mx = UserInputService:GetMouseLocation().X
+                    local rel = clamp((mx - (self.x + opt.hx)) / opt.hw, 0, 1)
                     opt.value = opt.min + rel * (opt.max - opt.min)
                     self:UpdateSliderVisual(opt)
                     return
@@ -987,7 +994,8 @@ function Library:SetupInput()
     table.insert(self.connections, UserInputService.InputChanged:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseMovement and self.activeSlider and self.mousedown then
             local opt = self.activeSlider
-            local rel = clamp((LOCAL_MOUSE.X - (self.x + opt.hx)) / opt.hw, 0, 1)
+            local mx = UserInputService:GetMouseLocation().X
+            local rel = clamp((mx - (self.x + opt.hx)) / opt.hw, 0, 1)
             opt.value = opt.min + rel * (opt.max - opt.min)
             self:UpdateSliderVisual(opt)
         end
@@ -996,7 +1004,8 @@ function Library:SetupInput()
     table.insert(self.connections, RunService.RenderStepped:Connect(function()
         if self.unloaded then return end
         if self.dragging then
-            self:SetMenuPos(LOCAL_MOUSE.X - self.dragOffset.X, LOCAL_MOUSE.Y - self.dragOffset.Y)
+            local mx, my = UserInputService:GetMouseLocation()
+            self:SetMenuPos(mx - self.dragOffset.X, my - self.dragOffset.Y)
         end
         for _, o in pairs(self.watermark.objects) do
             o.Visible = self.watermark.visible
