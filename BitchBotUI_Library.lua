@@ -1,19 +1,3 @@
---[[
-    BitchBot UI Library (Extracted & Cleaned)
-    Adapted for Potassium Executor (https://docs.potassium.pro/)
-    
-    Features:
-    - Drawing-based UI (Square, Text, Line, Image, Circle, etc.)
-    - Notification system
-    - Multi-tab menu with groups
-    - Controls: Toggle, Slider, Dropbox, Combobox, Button, Keybind, ColorPicker, TextBox, List, Image
-    - Config file system (save/load .bb style)
-    - Watermark
-    - Relations system (Friends / Priority) + Player List UI
-    
-    Usage example at the bottom.
-]]
-
 local Library = {}
 Library.__index = Library
 
