@@ -1,5 +1,7 @@
 --[[
     BitchBot UI Library - Faithful Extraction
+    FAITHFUL_UI_V2  (fixed addFill + mouse)
+    If you still see addFill boolean errors, you are loading an OLD copy.
     Based on original source patterns:
     - MouseInMenu with -36 Y offset (critical for clicks)
     - SetMenuPos / postable dragging
@@ -370,6 +372,8 @@ function Library.new(opts)
     self.activeSlider = nil
     self.dragging = false
     self.dragOffset = Vector2.new()
+    self.mouseOffsetX = opts.mouseOffsetX or 0
+    self.mouseOffsetY = opts.mouseOffsetY or 0
     self.playerListVisual = nil
     self.playerListMaxRows = 6
     self.watermark = {
@@ -385,14 +389,22 @@ function Library.new(opts)
     return self
 end
 
--- Mouse position helper (GetMouseLocation matches Drawing screen space)
-local function getMouse()
+-- Mouse position for Drawing API
+-- Some executors need GuiInset subtracted; others don't.
+-- self.mouseOffsetY can be tuned if clicks are still high/low.
+local GuiService = game:GetService("GuiService")
+local function getMouse(menu)
     local p = UserInputService:GetMouseLocation()
-    return p.X, p.Y
+    local inset = GuiService:GetGuiInset()
+    -- Drawing objects use top-left of viewport; GetMouseLocation is absolute.
+    -- Subtract inset so Y lines up with Drawing on most executors.
+    local ox = (menu and menu.mouseOffsetX) or 0
+    local oy = (menu and menu.mouseOffsetY) or 0
+    return p.X - inset.X + ox, p.Y - inset.Y + oy
 end
 
 function Library:MouseInMenu(x, y, width, height)
-    local mx, my = getMouse()
+    local mx, my = getMouse(self)
     return mx > self.x + x
         and mx < self.x + x + width
         and my > self.y + y
@@ -400,7 +412,7 @@ function Library:MouseInMenu(x, y, width, height)
 end
 
 function Library:MouseInArea(x, y, width, height)
-    local mx, my = getMouse()
+    local mx, my = getMouse(self)
     return mx > x and mx < x + width and my > y and my < y + height
 end
 
@@ -557,7 +569,15 @@ function Library:Initialize(menutable)
                     Draw:OutlinedRect(visible, vx+self.x, vy+self.y, vw, vh, col, contentGroup)
                     table.insert(self.postable, {contentGroup[#contentGroup], vx, vy})
                 end
-                local function addFill(vx,vy,vw,vh,col)
+                local function addFill(a,b,c,d,e,f)
+                    local vx,vy,vw,vh,col
+                    if type(a) == "boolean" then
+                        -- legacy (visible, x, y, w, h, col)
+                        vx,vy,vw,vh,col = b,c,d,e,f
+                    else
+                        vx,vy,vw,vh,col = a,b,c,d,e
+                    end
+                    if type(vx) ~= "number" or type(col) ~= "table" then return end
                     Draw:FilledRect(visible, vx+self.x, vy+self.y, vw, vh, col, contentGroup)
                     table.insert(self.postable, {contentGroup[#contentGroup], vx, vy})
                 end
@@ -889,7 +909,7 @@ function Library:SetupInput()
         -- Drag window (title bar area)
         if self:MouseInMenu(0, 0, self.w, 25) then
             self.dragging = true
-            local mx, my = UserInputService:GetMouseLocation()
+            local mx, my = getMouse(self)
             self.dragOffset = Vector2.new(mx - self.x, my - self.y)
             return
         end
@@ -935,7 +955,7 @@ function Library:SetupInput()
             elseif opt.type == SLIDER then
                 if self:MouseInMenu(opt.hx, opt.hy, opt.hw, opt.hh) then
                     self.activeSlider = opt
-                    local mx = UserInputService:GetMouseLocation().X
+                    local mx = getMouse(self)
                     local rel = clamp((mx - (self.x + opt.hx)) / opt.hw, 0, 1)
                     opt.value = opt.min + rel * (opt.max - opt.min)
                     self:UpdateSliderVisual(opt)
@@ -994,7 +1014,7 @@ function Library:SetupInput()
     table.insert(self.connections, UserInputService.InputChanged:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseMovement and self.activeSlider and self.mousedown then
             local opt = self.activeSlider
-            local mx = UserInputService:GetMouseLocation().X
+            local mx = getMouse(self)
             local rel = clamp((mx - (self.x + opt.hx)) / opt.hw, 0, 1)
             opt.value = opt.min + rel * (opt.max - opt.min)
             self:UpdateSliderVisual(opt)
@@ -1004,7 +1024,7 @@ function Library:SetupInput()
     table.insert(self.connections, RunService.RenderStepped:Connect(function()
         if self.unloaded then return end
         if self.dragging then
-            local mx, my = UserInputService:GetMouseLocation()
+            local mx, my = getMouse(self)
             self:SetMenuPos(mx - self.dragOffset.X, my - self.dragOffset.Y)
         end
         for _, o in pairs(self.watermark.objects) do
@@ -1023,7 +1043,10 @@ function Library:BuildPlayerList(x, y, w, h, tabIndex)
         Draw:OutlinedRect(visible, vx+self.x, vy+self.y, vw, vh, col, g)
         table.insert(self.postable, {g[#g], vx, vy})
     end
-    local function addFill(vx,vy,vw,vh,col)
+    local function addFill(a,b,c,d,e,f)
+        local vx,vy,vw,vh,col
+        if type(a) == "boolean" then vx,vy,vw,vh,col = b,c,d,e,f else vx,vy,vw,vh,col = a,b,c,d,e end
+        if type(vx) ~= "number" or type(col) ~= "table" then return end
         Draw:FilledRect(visible, vx+self.x, vy+self.y, vw, vh, col, g)
         table.insert(self.postable, {g[#g], vx, vy})
     end
