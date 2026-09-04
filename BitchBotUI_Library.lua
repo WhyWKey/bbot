@@ -374,6 +374,7 @@ function Library.new(opts)
     self.dragOffset = Vector2.new()
     self.mouseOffsetX = opts.mouseOffsetX or 0
     self.mouseOffsetY = opts.mouseOffsetY or 0
+    self.mouseMode = opts.mouseMode or "raw"
     self.playerListVisual = nil
     self.playerListMaxRows = 6
     self.watermark = {
@@ -395,12 +396,19 @@ end
 local GuiService = game:GetService("GuiService")
 local function getMouse(menu)
     local p = UserInputService:GetMouseLocation()
-    local inset = GuiService:GetGuiInset()
-    -- Drawing objects use top-left of viewport; GetMouseLocation is absolute.
-    -- Subtract inset so Y lines up with Drawing on most executors.
     local ox = (menu and menu.mouseOffsetX) or 0
     local oy = (menu and menu.mouseOffsetY) or 0
-    return p.X - inset.X + ox, p.Y - inset.Y + oy
+    -- mode: "raw" = GetMouseLocation as-is (default)
+    --       "inset" = subtract GuiInset
+    --       "legacy" = LOCAL_MOUSE with -36 (original bitchbot)
+    local mode = (menu and menu.mouseMode) or "raw"
+    if mode == "inset" then
+        local inset = GuiService:GetGuiInset()
+        return p.X - inset.X + ox, p.Y - inset.Y + oy
+    elseif mode == "legacy" then
+        return LOCAL_MOUSE.X + ox, LOCAL_MOUSE.Y + 36 + oy
+    end
+    return p.X + ox, p.Y + oy
 end
 
 function Library:MouseInMenu(x, y, width, height)
@@ -419,9 +427,13 @@ end
 function Library:SetMenuPos(x, y)
     self.x = x
     self.y = y
+    -- MUST update every object, including hidden tab content.
+    -- Otherwise switching tabs after drag leaves groups at the old screen position.
     for _, v in pairs(self.postable) do
-        if v[1] and v[1].Visible then
-            v[1].Position = Vector2.new(x + v[2], y + v[3])
+        if v[1] then
+            pcall(function()
+                v[1].Position = Vector2.new(x + v[2], y + v[3])
+            end)
         end
     end
 end
@@ -803,6 +815,8 @@ function Library:SwitchTab(idx)
     if idx < 1 or idx > #self.tabButtons then return end
     if self.openDropdown then self:CloseDropdown() end
     self.activetab = idx
+    -- re-sync every drawing to current menu position (fixes drag + tab switch desync)
+    self:SetMenuPos(self.x, self.y)
     self:UpdateTabBar()
     for tabIdx, content in pairs(self.tabz) do
         local show = (tabIdx == idx) and self.open
