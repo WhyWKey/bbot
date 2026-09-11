@@ -4868,31 +4868,30 @@
     -- Notification Library
         -- IGNORE: , TweenInfo.new(1, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out)
         function Notifications:RefreshNotifications()
-            -- Classic BitchBot stack: top-left under watermark, tight spacing
-            local offset = 72
-            local info = TweenInfo.new(0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+            local offset = 70
+            local info = TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
             for _, v in Notifications.Notifs do
                 if v and v.Parent then
-                    Library:Tween(v, { Position = dim_offset(12, offset) }, info)
-                    offset += (v.AbsoluteSize.Y + 2)
+                    Library:Tween(v, { Position = dim_offset(10, offset) }, info)
+                    offset += (v.AbsoluteSize.Y + 3)
                 end
             end
             return offset
         end
 
         function Notifications:FadeNotifs(path, is_fading)
-            -- Smooth opacity only (classic text notifs)
             local goal = is_fading and 1 or 0
-            local info = TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+            local info = TweenInfo.new(0.38, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+            if path:IsA("Frame") then
+                Library:Tween(path, { BackgroundTransparency = is_fading and 1 or 0.25 }, info)
+            end
             for _, instance in path:GetDescendants() do
                 if instance:IsA("TextLabel") then
                     Library:Tween(instance, { TextTransparency = goal }, info)
-                    local stroke = instance:FindFirstChildOfClass("UIStroke")
-                    if stroke then
-                        Library:Tween(stroke, { Transparency = goal }, info)
-                    end
                 elseif instance:IsA("UIStroke") then
-                    Library:Tween(instance, { Transparency = goal }, info)
+                    Library:Tween(instance, { Transparency = is_fading and 1 or 0.4 }, info)
+                elseif instance:IsA("Frame") then
+                    Library:Tween(instance, { BackgroundTransparency = is_fading and 1 or instance:GetAttribute("BaseTransparency") or 0.35 }, info)
                 elseif instance:IsA("ImageLabel") then
                     Library:Tween(instance, { ImageTransparency = goal }, info)
                 end
@@ -4900,85 +4899,75 @@
         end
 
         function Notifications:Create(properties)
+            -- Classic BitchBot popup style (the [botnet]: lines — NOT game killfeed)
             local Cfg = {
                 Name = properties.Name or "Notification",
                 Lifetime = properties.LifeTime or properties.Lifetime or 4,
                 Items = {},
             }
-
             local Items = Cfg.Items
 
-            -- Lightweight host (invisible) — classic BitchBot was text-only overlays
             Items.Outline = Library:Create("Frame", {
                 Parent = Library.Items,
                 Name = "\0",
-                BackgroundTransparency = 1,
                 BorderSizePixel = 0,
                 AutomaticSize = Enum.AutomaticSize.XY,
-                Position = dim_offset(12, 72),
-                Size = dim2(0, 0, 0, 0),
-                ZIndex = 200,
+                Position = dim_offset(10, 70),
+                BackgroundColor3 = rgb(20, 20, 20),
+                BackgroundTransparency = 1, -- start hidden for fade-in
+                ZIndex = 250,
+            })
+            Items.Outline:SetAttribute("BaseTransparency", 0.22)
+
+            local stroke = Library:Create("UIStroke", {
+                Parent = Items.Outline,
+                Color = rgb(0, 0, 0),
+                Thickness = 1,
+                Transparency = 1,
             })
 
-            -- Shadow pass (offset) for readability like old BB
-            Items.Shadow = Library:Create("TextLabel", {
+            Library:Create("UIPadding", {
                 Parent = Items.Outline,
-                FontFace = Library.Font,
-                Text = Cfg.Name,
-                TextSize = 14,
-                TextColor3 = rgb(0, 0, 0),
-                TextTransparency = 1,
-                BackgroundTransparency = 1,
-                BorderSizePixel = 0,
-                AutomaticSize = Enum.AutomaticSize.XY,
-                Position = dim_offset(1, 1),
-                ZIndex = 200,
-                TextXAlignment = Enum.TextXAlignment.Left,
+                PaddingTop = dim(0, 3),
+                PaddingBottom = dim(0, 3),
+                PaddingLeft = dim(0, 6),
+                PaddingRight = dim(0, 8),
             })
 
             Items.Text = Library:Create("TextLabel", {
                 Parent = Items.Outline,
                 FontFace = Library.Font,
                 Text = Cfg.Name,
-                TextSize = 14,
-                TextColor3 = themes.preset.text_color,
+                TextSize = 13,
+                TextColor3 = rgb(235, 235, 235),
                 TextTransparency = 1,
                 BackgroundTransparency = 1,
                 BorderSizePixel = 0,
                 AutomaticSize = Enum.AutomaticSize.XY,
-                Position = dim_offset(0, 0),
-                ZIndex = 201,
+                ZIndex = 251,
                 TextXAlignment = Enum.TextXAlignment.Left,
-            }); Library:Themify(Items.Text, "text_color", "TextColor3")
-
-            local stroke = Library:Create("UIStroke", {
-                Parent = Items.Text,
-                Color = themes.preset.text_outline or rgb(0, 0, 0),
-                Thickness = 1,
-                Transparency = 1,
-            }); Library:Themify(stroke, "text_outline", "Color")
+            })
 
             local index = #Notifications.Notifs + 1
             Notifications.Notifs[index] = Items.Outline
 
             local offset = Notifications:RefreshNotifications()
-            Items.Outline.Position = dim_offset(12, offset)
+            Items.Outline.Position = dim_offset(10, offset)
 
-            -- Fade in (smooth Quad — matches old BB softness)
-            local fadeIn = TweenInfo.new(0.32, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+            -- Smooth fade in (opacity only — same soft feel as old BB)
+            local fadeIn = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+            Library:Tween(Items.Outline, { BackgroundTransparency = 0.22 }, fadeIn)
+            Library:Tween(stroke, { Transparency = 0.35 }, fadeIn)
             Library:Tween(Items.Text, { TextTransparency = 0 }, fadeIn)
-            Library:Tween(Items.Shadow, { TextTransparency = 0.55 }, fadeIn)
-            Library:Tween(stroke, { Transparency = 0.15 }, fadeIn)
 
             task.spawn(function()
                 task.wait(Cfg.Lifetime)
                 Notifications.Notifs[index] = nil
                 Notifications:RefreshNotifications()
-                -- Fade out
                 local fadeOut = TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
-                Library:Tween(Items.Text, { TextTransparency = 1 }, fadeOut)
-                Library:Tween(Items.Shadow, { TextTransparency = 1 }, fadeOut)
+                Library:Tween(Items.Outline, { BackgroundTransparency = 1 }, fadeOut)
                 Library:Tween(stroke, { Transparency = 1 }, fadeOut)
+                Library:Tween(Items.Text, { TextTransparency = 1 }, fadeOut)
                 task.wait(0.42)
                 if Items.Outline and Items.Outline.Parent then
                     Items.Outline:Destroy()
