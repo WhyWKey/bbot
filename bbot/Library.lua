@@ -4873,7 +4873,7 @@
             for _, v in Notifications.Notifs do
                 if v and v.Parent then
                     Library:Tween(v, { Position = dim_offset(10, offset) }, info)
-                    offset += (v.AbsoluteSize.Y + 3)
+                    offset += (v.AbsoluteSize.Y + 4)
                 end
             end
             return offset
@@ -4881,17 +4881,17 @@
 
         function Notifications:FadeNotifs(path, is_fading)
             local goal = is_fading and 1 or 0
-            local info = TweenInfo.new(0.38, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+            local info = TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
             if path:IsA("Frame") then
-                Library:Tween(path, { BackgroundTransparency = is_fading and 1 or 0.25 }, info)
+                Library:Tween(path, { BackgroundTransparency = is_fading and 1 or 0.18 }, info)
             end
             for _, instance in path:GetDescendants() do
                 if instance:IsA("TextLabel") then
                     Library:Tween(instance, { TextTransparency = goal }, info)
                 elseif instance:IsA("UIStroke") then
-                    Library:Tween(instance, { Transparency = is_fading and 1 or 0.4 }, info)
+                    Library:Tween(instance, { Transparency = is_fading and 1 or 0.35 }, info)
                 elseif instance:IsA("Frame") then
-                    Library:Tween(instance, { BackgroundTransparency = is_fading and 1 or instance:GetAttribute("BaseTransparency") or 0.35 }, info)
+                    Library:Tween(instance, { BackgroundTransparency = is_fading and 1 or 0.18 }, info)
                 elseif instance:IsA("ImageLabel") then
                     Library:Tween(instance, { ImageTransparency = goal }, info)
                 end
@@ -4899,76 +4899,111 @@
         end
 
         function Notifications:Create(properties)
-            -- Classic BitchBot popup style (the [botnet]: lines — NOT game killfeed)
             local Cfg = {
                 Name = properties.Name or "Notification",
                 Lifetime = properties.LifeTime or properties.Lifetime or 4,
                 Items = {},
             }
             local Items = Cfg.Items
+            local lifetime = math.max(0.35, tonumber(Cfg.Lifetime) or 4)
 
+            -- Dark bar popup (classic BB) + bottom accent lifetime bar
             Items.Outline = Library:Create("Frame", {
                 Parent = Library.Items,
                 Name = "\0",
                 BorderSizePixel = 0,
                 AutomaticSize = Enum.AutomaticSize.XY,
                 Position = dim_offset(10, 70),
-                BackgroundColor3 = rgb(20, 20, 20),
-                BackgroundTransparency = 1, -- start hidden for fade-in
+                BackgroundColor3 = themes.preset.background,
+                BackgroundTransparency = 1,
                 ZIndex = 250,
-            })
-            Items.Outline:SetAttribute("BaseTransparency", 0.22)
+                ClipsDescendants = true,
+            }); Library:Themify(Items.Outline, "background", "BackgroundColor3")
 
             local stroke = Library:Create("UIStroke", {
                 Parent = Items.Outline,
-                Color = rgb(0, 0, 0),
+                Color = themes.preset.outline,
                 Thickness = 1,
                 Transparency = 1,
-            })
+            }); Library:Themify(stroke, "outline", "Color")
 
             Library:Create("UIPadding", {
                 Parent = Items.Outline,
-                PaddingTop = dim(0, 3),
-                PaddingBottom = dim(0, 3),
-                PaddingLeft = dim(0, 6),
-                PaddingRight = dim(0, 8),
+                PaddingTop = dim(0, 4),
+                PaddingBottom = dim(0, 6), -- room for progress bar
+                PaddingLeft = dim(0, 7),
+                PaddingRight = dim(0, 9),
             })
 
             Items.Text = Library:Create("TextLabel", {
                 Parent = Items.Outline,
                 FontFace = Library.Font,
-                Text = Cfg.Name,
+                Text = tostring(Cfg.Name),
                 TextSize = 13,
-                TextColor3 = rgb(235, 235, 235),
+                TextColor3 = themes.preset.text_color,
                 TextTransparency = 1,
                 BackgroundTransparency = 1,
                 BorderSizePixel = 0,
                 AutomaticSize = Enum.AutomaticSize.XY,
                 ZIndex = 251,
                 TextXAlignment = Enum.TextXAlignment.Left,
-            })
+            }); Library:Themify(Items.Text, "text_color", "TextColor3")
+
+            -- Lifetime progress track (bottom)
+            Items.ProgressBg = Library:Create("Frame", {
+                Parent = Items.Outline,
+                Name = "\0",
+                BorderSizePixel = 0,
+                Size = dim2(1, 0, 0, 2),
+                Position = dim2(0, 0, 1, -2),
+                BackgroundColor3 = themes.preset.outline,
+                BackgroundTransparency = 1,
+                ZIndex = 252,
+            }); Library:Themify(Items.ProgressBg, "outline", "BackgroundColor3")
+
+            -- Fill uses menu accent; shrinks left→right over lifetime
+            Items.Progress = Library:Create("Frame", {
+                Parent = Items.ProgressBg,
+                Name = "\0",
+                BorderSizePixel = 0,
+                Size = dim2(1, 0, 1, 0),
+                Position = dim2(0, 0, 0, 0),
+                BackgroundColor3 = themes.preset.accent,
+                BackgroundTransparency = 1,
+                ZIndex = 253,
+            }); Library:Themify(Items.Progress, "accent", "BackgroundColor3")
 
             local index = #Notifications.Notifs + 1
             Notifications.Notifs[index] = Items.Outline
 
             local offset = Notifications:RefreshNotifications()
-            Items.Outline.Position = dim_offset(10, offset)
+            Items.Outline.Position = dim_offset(6, offset - 4)
 
-            -- Smooth fade in (opacity only — same soft feel as old BB)
-            local fadeIn = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-            Library:Tween(Items.Outline, { BackgroundTransparency = 0.22 }, fadeIn)
-            Library:Tween(stroke, { Transparency = 0.35 }, fadeIn)
+            local fadeIn = TweenInfo.new(0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+            Library:Tween(Items.Outline, {
+                BackgroundTransparency = 0.12,
+                Position = dim_offset(10, offset),
+            }, fadeIn)
+            Library:Tween(stroke, { Transparency = 0.25 }, fadeIn)
             Library:Tween(Items.Text, { TextTransparency = 0 }, fadeIn)
+            Library:Tween(Items.ProgressBg, { BackgroundTransparency = 0.35 }, fadeIn)
+            Library:Tween(Items.Progress, { BackgroundTransparency = 0 }, fadeIn)
+
+            -- Progress bar animation = exact lifetime until disappear
+            local barInfo = TweenInfo.new(lifetime, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut)
+            Library:Tween(Items.Progress, { Size = dim2(0, 0, 1, 0) }, barInfo)
 
             task.spawn(function()
-                task.wait(Cfg.Lifetime)
+                task.wait(lifetime)
                 Notifications.Notifs[index] = nil
                 Notifications:RefreshNotifications()
-                local fadeOut = TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+                local fadeOut = TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
                 Library:Tween(Items.Outline, { BackgroundTransparency = 1 }, fadeOut)
                 Library:Tween(stroke, { Transparency = 1 }, fadeOut)
                 Library:Tween(Items.Text, { TextTransparency = 1 }, fadeOut)
-                task.wait(0.42)
+                Library:Tween(Items.ProgressBg, { BackgroundTransparency = 1 }, fadeOut)
+                Library:Tween(Items.Progress, { BackgroundTransparency = 1 }, fadeOut)
+                task.wait(0.38)
                 if Items.Outline and Items.Outline.Parent then
                     Items.Outline:Destroy()
                 end
