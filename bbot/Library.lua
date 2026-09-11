@@ -4867,156 +4867,202 @@
 
     -- Notification Library
         -- IGNORE: , TweenInfo.new(1, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out)
-        function Notifications:RefreshNotifications() 
+        function Notifications:RefreshNotifications()
             local offset = 50
-            
+            local info = TweenInfo.new(
+                (Library.TweeningSpeed or 0.3) * 1.15,
+                Library.EasingStyle or Enum.EasingStyle.Linear,
+                Enum.EasingDirection.Out
+            )
             for i, v in Notifications.Notifs do
-                local Position = vec2(20, offset)
-                Library:Tween(v, {Position = dim_offset(Position.X, Position.Y)})
-                offset += (v.AbsoluteSize.Y + 10)
-            end
-
-            return offset
-        end
-        
-        function Notifications:FadeNotifs(path, is_fading)
-            local fading = is_fading and 1 or 0 
-            
-            Library:Tween(path, {BackgroundTransparency = fading})
-
-            for _, instance in path:GetDescendants() do 
-                if not instance:IsA("GuiObject") then 
-                    if instance:IsA("UIStroke") then
-                        Library:Tween(instance, {Transparency = fading})
-                    end
-        
-                    continue
-                end 
-        
-                if instance:IsA("TextLabel") then
-                    Library:Tween(instance, {TextTransparency = fading})
-                elseif instance:IsA("Frame") then
-                    Library:Tween(instance, {BackgroundTransparency = instance.Transparency and 0.6 and is_fading and 1 or 0.6})
+                if v and v.Parent then
+                    Library:Tween(v, { Position = dim_offset(20, offset) }, info)
+                    offset += (v.AbsoluteSize.Y + 8)
                 end
             end
-        end 
-        
+            return offset
+        end
+
+        function Notifications:FadeNotifs(path, is_fading)
+            local fading = is_fading and 1 or 0
+            local info = TweenInfo.new(
+                (Library.TweeningSpeed or 0.3) * 1.25,
+                Library.EasingStyle or Enum.EasingStyle.Linear,
+                Enum.EasingDirection.InOut
+            )
+            Library:Tween(path, { BackgroundTransparency = fading }, info)
+            for _, instance in path:GetDescendants() do
+                if instance:IsA("UIStroke") then
+                    Library:Tween(instance, { Transparency = fading }, info)
+                elseif instance:IsA("TextLabel") or instance:IsA("TextButton") then
+                    Library:Tween(instance, { TextTransparency = fading }, info)
+                elseif instance:IsA("ImageLabel") or instance:IsA("ImageButton") then
+                    Library:Tween(instance, { ImageTransparency = fading }, info)
+                elseif instance:IsA("Frame") then
+                    Library:Tween(instance, { BackgroundTransparency = fading }, info)
+                end
+            end
+        end
+
         function Notifications:Create(properties)
             local Cfg = {
-                Name = properties.Name or "This is a title!";
-                Lifetime = properties.LifeTime or 3;
-                
+                Name = properties.Name or "Notification";
+                Lifetime = properties.LifeTime or properties.Lifetime or 3;
                 Items = {};
-                outline;
             }
 
-            local Items = Cfg.Items; do 
-                Items.Outline = Library:Create( "Frame" , {
-                    Parent = Library.Items;
-                    Size = dim2(0, 0, 0, 18);
-                    Name = "\0";
-                    AnchorPoint = vec2(1, 0);
-                    Position = dim2(0, 7, 0, 46);
-                    BorderColor3 = rgb(0, 0, 0);
-                    BorderSizePixel = 0;
-                    AutomaticSize = Enum.AutomaticSize.XY;
-                    BackgroundColor3 = rgb(52, 52, 52)
-                });
-                
-                Items.Inline = Library:Create( "Frame" , {
-                    Parent = Items.Outline;
-                    Name = "\0";
-                    Position = dim2(0, 1, 0, 1);
-                    BorderColor3 = rgb(0, 0, 0);
-                    BorderSizePixel = 0;
-                    AutomaticSize = Enum.AutomaticSize.XY;
-                    BackgroundColor3 = rgb(5, 5, 5)
-                });
-                
-                Library:Create( "UIPadding" , {
-                    PaddingTop = dim(0, 7);
-                    PaddingBottom = dim(0, 6);
-                    Parent = Items.Inline;
-                    PaddingRight = dim(0, 8);
-                    PaddingLeft = dim(0, 4)
-                });
-                
-                Items.Text = Library:Create( "TextLabel" , {
-                    FontFace = Library.Font;
-                    Parent = Items.Inline;
-                    TextColor3 = rgb(255, 255, 255);
-                    BorderColor3 = rgb(0, 0, 0);
-                    Text = Cfg.Name;
-                    Name = "\0";
-                    AutomaticSize = Enum.AutomaticSize.XY;
-                    Size = dim2(1, -4, 1, 0);
-                    Position = dim2(0, 4, 0, -2);
-                    BackgroundTransparency = 1;
-                    TextXAlignment = Enum.TextXAlignment.Left;
-                    BorderSizePixel = 0;
-                    ZIndex = 2;
-                    TextSize = 12;
-                    BackgroundColor3 = rgb(255, 255, 255)
-                });
-                
-                Library:Create( "UIPadding" , {
-                    PaddingBottom = dim(0, 1);
-                    PaddingRight = dim(0, 1);
-                    Parent = Items.Outline
-                });
-                
-                Items.AccentLine = Library:Create( "Frame" , {
-                    Parent = Items.Outline;
-                    Name = "\0";
-                    Position = dim2(0, 2, 1, -1);
-                    BorderColor3 = rgb(0, 0, 0);
-                    Size = dim2(1, -1, 0, 1);
-                    BorderSizePixel = 0;
-                    ZIndex = 100;
-                    BackgroundColor3 = themes.preset.accent
-                });	Library:Themify(Items.AccentLine, "accent", "BackgroundColor3")
-                
-                Items.Accent = Library:Create( "Frame" , {
-                    Parent = Items.Outline;
-                    Name = "\0";
-                    ZIndex = 100;
-                    Position = dim2(0, 1, 0, 1);
-                    BorderColor3 = rgb(0, 0, 0);
-                    Size = dim2(0, 1, 1, -1);
-                    BorderSizePixel = 0;
-                    BackgroundColor3 = themes.preset.accent
-                });	Library:Themify(Items.Accent, "accent", "BackgroundColor3")                    
-            end 
-            
+            local Items = Cfg.Items
+            -- Match menu chrome: outline → inline → background
+            Items.Outline = Library:Create("Frame", {
+                Parent = Library.Items,
+                Size = dim2(0, 0, 0, 0),
+                Name = "\0",
+                AnchorPoint = vec2(1, 0),
+                Position = dim2(0, 20, 0, 50),
+                BorderSizePixel = 0,
+                AutomaticSize = Enum.AutomaticSize.XY,
+                BackgroundColor3 = themes.preset.outline,
+                BackgroundTransparency = 0,
+            }); Library:Themify(Items.Outline, "outline", "BackgroundColor3")
+
+            Items.Inline = Library:Create("Frame", {
+                Parent = Items.Outline,
+                Name = "\0",
+                Position = dim2(0, 1, 0, 1),
+                BorderSizePixel = 0,
+                AutomaticSize = Enum.AutomaticSize.XY,
+                BackgroundColor3 = themes.preset.inline,
+            }); Library:Themify(Items.Inline, "inline", "BackgroundColor3")
+
+            Items.Background = Library:Create("Frame", {
+                Parent = Items.Inline,
+                Name = "\0",
+                Position = dim2(0, 1, 0, 1),
+                BorderSizePixel = 0,
+                AutomaticSize = Enum.AutomaticSize.XY,
+                BackgroundColor3 = themes.preset.background,
+            }); Library:Themify(Items.Background, "background", "BackgroundColor3")
+
+            Library:Create("UIPadding", {
+                PaddingTop = dim(0, 6),
+                PaddingBottom = dim(0, 6),
+                PaddingRight = dim(0, 10),
+                PaddingLeft = dim(0, 8),
+                Parent = Items.Background,
+            })
+
+            -- Top accent strip (menu-like)
+            Items.TopAccent = Library:Create("Frame", {
+                Parent = Items.Outline,
+                Name = "\0",
+                Size = dim2(1, 0, 0, 1),
+                Position = dim2(0, 0, 0, 0),
+                BorderSizePixel = 0,
+                ZIndex = 100,
+                BackgroundColor3 = themes.preset.accent,
+            }); Library:Themify(Items.TopAccent, "accent", "BackgroundColor3")
+
+            -- Left accent bar
+            Items.Accent = Library:Create("Frame", {
+                Parent = Items.Outline,
+                Name = "\0",
+                ZIndex = 100,
+                Position = dim2(0, 1, 0, 1),
+                Size = dim2(0, 1, 1, -1),
+                BorderSizePixel = 0,
+                BackgroundColor3 = themes.preset.accent,
+            }); Library:Themify(Items.Accent, "accent", "BackgroundColor3")
+
+            -- Lifetime accent line (shrinks)
+            Items.AccentLine = Library:Create("Frame", {
+                Parent = Items.Outline,
+                Name = "\0",
+                Position = dim2(0, 2, 1, -1),
+                Size = dim2(1, -3, 0, 1),
+                BorderSizePixel = 0,
+                ZIndex = 100,
+                BackgroundColor3 = themes.preset.accent,
+            }); Library:Themify(Items.AccentLine, "accent", "BackgroundColor3")
+
+            local row = Library:Create("Frame", {
+                Parent = Items.Background,
+                BackgroundTransparency = 1,
+                AutomaticSize = Enum.AutomaticSize.XY,
+                Size = dim2(0, 0, 0, 0),
+                BorderSizePixel = 0,
+            })
+            Library:Create("UIListLayout", {
+                Parent = row,
+                FillDirection = Enum.FillDirection.Horizontal,
+                VerticalAlignment = Enum.VerticalAlignment.Center,
+                SortOrder = Enum.SortOrder.LayoutOrder,
+                Padding = dim(0, 6),
+            })
+
+            Items.Logo = Library:Create("ImageLabel", {
+                Parent = row,
+                Size = dim_offset(14, 14),
+                BackgroundTransparency = 1,
+                Image = (Library.Brand and Library.Brand.Logo) or "rbxassetid://95206582407271",
+                ImageColor3 = themes.preset.accent,
+                ScaleType = Enum.ScaleType.Fit,
+                LayoutOrder = 1,
+            }); Library:Themify(Items.Logo, "accent", "ImageColor3")
+
+            Items.Text = Library:Create("TextLabel", {
+                Parent = row,
+                FontFace = Library.Font,
+                TextColor3 = themes.preset.text_color,
+                Text = Cfg.Name,
+                AutomaticSize = Enum.AutomaticSize.XY,
+                BackgroundTransparency = 1,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                TextSize = 12,
+                LayoutOrder = 2,
+            }); Library:Themify(Items.Text, "text_color", "TextColor3")
+
+            Library:Create("UIPadding", {
+                PaddingBottom = dim(0, 1),
+                PaddingRight = dim(0, 1),
+                Parent = Items.Outline,
+            })
+
             local index = #Notifications.Notifs + 1
             Notifications.Notifs[index] = Items.Outline
 
-            -- Notifications:FadeNotifs(Items.Outline, false)
-            
             local offset = Notifications:RefreshNotifications()
-
             Items.Outline.Position = dim_offset(20, offset)
 
-            Library:Tween(Items.Outline, {AnchorPoint = vec2(0, 0)})
-            Library:Tween(Items.AccentLine, {Size = dim2(0, -2, 0, 1)}, TweenInfo.new(Cfg.Lifetime, Enum.EasingStyle.Quint, Enum.EasingDirection.InOut, 0, false, 0))
+            local slideInfo = TweenInfo.new(
+                (Library.TweeningSpeed or 0.3) * 1.35,
+                Library.EasingStyle or Enum.EasingStyle.Linear,
+                Enum.EasingDirection.Out
+            )
+            local lifetimeInfo = TweenInfo.new(
+                Cfg.Lifetime,
+                Enum.EasingStyle.Linear,
+                Enum.EasingDirection.InOut
+            )
 
-            print(Items.AccentLine.BackgroundTransparency)
+            -- Smooth slide in
+            Library:Tween(Items.Outline, { AnchorPoint = vec2(0, 0) }, slideInfo)
+            -- Accent lifetime bar shrinks over full duration
+            Library:Tween(Items.AccentLine, { Size = dim2(0, 0, 0, 1) }, lifetimeInfo)
+
             task.spawn(function()
                 task.wait(Cfg.Lifetime)
                 Notifications.Notifs[index] = nil
+                Notifications:RefreshNotifications()
                 Notifications:FadeNotifs(Items.Outline, true)
-                Library:Tween(Items.Outline, {AnchorPoint = vec2(1, 0)})
-                task.wait(1)
-                Items.Outline:Destroy() 
+                Library:Tween(Items.Outline, { AnchorPoint = vec2(1, 0) }, slideInfo)
+                task.wait((Library.TweeningSpeed or 0.3) * 1.5 + 0.15)
+                if Items.Outline and Items.Outline.Parent then
+                    Items.Outline:Destroy()
+                end
             end)
         end
-    --
--- 
 
 
--- ============================================================================
-
--- ============================================================================
 -- BitchBot built-ins — same Create / Themify / Draggify / themes.preset as the lib
 -- ============================================================================
 
