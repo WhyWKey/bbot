@@ -1922,16 +1922,17 @@
                         PaddingLeft = dim(0, 5)
                     });
                     
-                    Library:Create( "ImageLabel" , {
+                    Items.WatermarkLogo = Library:Create( "ImageLabel" , {
                         BorderColor3 = rgb(0, 0, 0);
                         Parent = Items.Watermark;
-                        Image = "rbxassetid://133601737414791";
+                        Image = (getgenv().Library and getgenv().Library.Brand and getgenv().Library.Brand.Logo) or "rbxassetid://95206582407271";
+                        ImageColor3 = themes.preset.accent;
                         BackgroundTransparency = 1;
-                        Position = dim2(0, 3, 0, 2);
-                        Size = dim2(0, 11, 0, 15);
+                        Position = dim2(0, 3, 0, 4);
+                        Size = dim2(0, 12, 0, 12);
                         BorderSizePixel = 0;
                         BackgroundColor3 = rgb(255, 255, 255)
-                    });
+                    }); Library:Themify(Items.WatermarkLogo, "accent", "ImageColor3")
                 --
             end
 
@@ -5014,8 +5015,9 @@
 
 
 -- ============================================================================
--- BitchBot built-ins (loader, target HUD, log notifies, chat spy)
--- Merged from modular scripts — uses themes.preset.accent when available
+
+-- ============================================================================
+-- BitchBot built-ins — same Create / Themify / Draggify / themes.preset as the lib
 -- ============================================================================
 
 Library.Brand = Library.Brand or {
@@ -5028,12 +5030,6 @@ Library.Brand = Library.Brand or {
     },
 }
 
-local function BB_Accent()
-    local ok, c = pcall(function() return themes.preset.accent end)
-    if ok and typeof(c) == "Color3" then return c end
-    return rgb(45, 125, 200)
-end
-
 local function BB_ParentGui()
     local ok, gui = pcall(function()
         return CoreGui:FindFirstChild("RobloxGui") or CoreGui
@@ -5042,135 +5038,146 @@ local function BB_ParentGui()
     return lp:WaitForChild("PlayerGui")
 end
 
+local function BB_Accent()
+    return themes.preset.accent
+end
+
 ----------------------------------------------------------------
--- Loader (yields until finished)
+-- Loader (yields) — themed with themes.preset
 ----------------------------------------------------------------
 function Library:ShowLoader(opts)
     opts = opts or {}
     local brand = opts.Brand or Library.Brand
     local duration = opts.Duration or 3
-    local accent = BB_Accent()
-    local MainBg = rgb(35, 35, 35)
-    local InnerBorderColor = rgb(60, 60, 60)
-    local OuterBorderColor = rgb(15, 15, 15)
-    local BottomBg = rgb(20, 20, 20)
 
     local ParentGui = BB_ParentGui()
     if ParentGui:FindFirstChild("BBotMenuLoader") then
         ParentGui.BBotMenuLoader:Destroy()
     end
 
-    local ScreenGui = Instance.new("ScreenGui")
-    ScreenGui.Name = "BBotMenuLoader"
-    ScreenGui.ResetOnSpawn = false
-    ScreenGui.IgnoreGuiInset = true
-    ScreenGui.DisplayOrder = 999999
-    ScreenGui.Parent = ParentGui
+    local ScreenGui = Library:Create("ScreenGui", {
+        Name = "BBotMenuLoader",
+        ResetOnSpawn = false,
+        IgnoreGuiInset = true,
+        DisplayOrder = 999999,
+        Parent = ParentGui,
+    })
 
-    local OuterBorder = Instance.new("Frame")
-    OuterBorder.Name = "OuterBorder"
-    OuterBorder.Size = UDim2.fromOffset(220, 70)
-    OuterBorder.Position = UDim2.new(0.5, -110, 0.5, -35)
-    OuterBorder.BackgroundColor3 = OuterBorderColor
-    OuterBorder.BorderSizePixel = 0
-    OuterBorder.BackgroundTransparency = 1
-    OuterBorder.Parent = ScreenGui
+    local OuterBorder = Library:Create("Frame", {
+        Name = "OuterBorder",
+        Size = dim_offset(220, 70),
+        Position = dim2(0.5, -110, 0.5, -35),
+        BackgroundColor3 = themes.preset.outline,
+        BorderSizePixel = 0,
+        BackgroundTransparency = 1,
+        Parent = ScreenGui,
+    }); Library:Themify(OuterBorder, "outline", "BackgroundColor3")
 
-    local InnerBorder = Instance.new("Frame")
-    InnerBorder.Size = UDim2.new(1, -2, 1, -2)
-    InnerBorder.Position = UDim2.fromOffset(1, 1)
-    InnerBorder.BackgroundColor3 = InnerBorderColor
-    InnerBorder.BorderSizePixel = 0
-    InnerBorder.BackgroundTransparency = 1
-    InnerBorder.Parent = OuterBorder
+    local InnerBorder = Library:Create("Frame", {
+        Size = dim2(1, -2, 1, -2),
+        Position = dim2(0, 1, 0, 1),
+        BackgroundColor3 = themes.preset.inline,
+        BorderSizePixel = 0,
+        BackgroundTransparency = 1,
+        Parent = OuterBorder,
+    }); Library:Themify(InnerBorder, "inline", "BackgroundColor3")
 
-    local LoaderFrame = Instance.new("Frame")
-    LoaderFrame.Size = UDim2.new(1, -2, 1, -2)
-    LoaderFrame.Position = UDim2.fromOffset(1, 1)
-    LoaderFrame.BackgroundColor3 = MainBg
-    LoaderFrame.BorderSizePixel = 0
-    LoaderFrame.BackgroundTransparency = 1
-    LoaderFrame.ClipsDescendants = true
-    LoaderFrame.Parent = InnerBorder
+    local LoaderFrame = Library:Create("Frame", {
+        Size = dim2(1, -2, 1, -2),
+        Position = dim2(0, 1, 0, 1),
+        BackgroundColor3 = themes.preset.background,
+        BorderSizePixel = 0,
+        BackgroundTransparency = 1,
+        ClipsDescendants = true,
+        Parent = InnerBorder,
+    }); Library:Themify(LoaderFrame, "background", "BackgroundColor3")
 
-    local TopAccent = Instance.new("Frame")
-    TopAccent.Size = UDim2.new(1, 0, 0, 1)
-    TopAccent.BackgroundColor3 = accent
-    TopAccent.BorderSizePixel = 0
-    TopAccent.BackgroundTransparency = 1
-    TopAccent.Parent = LoaderFrame
+    local TopAccent = Library:Create("Frame", {
+        Size = dim2(1, 0, 0, 1),
+        BackgroundColor3 = themes.preset.accent,
+        BorderSizePixel = 0,
+        BackgroundTransparency = 1,
+        Parent = LoaderFrame,
+    }); Library:Themify(TopAccent, "accent", "BackgroundColor3")
 
-    local Logo = Instance.new("ImageLabel")
-    Logo.Size = UDim2.fromOffset(35, 35)
-    Logo.Position = UDim2.fromOffset(12, 10)
-    Logo.BackgroundTransparency = 1
-    Logo.Image = brand.Logo or Library.Brand.Logo
-    Logo.ImageColor3 = accent
-    Logo.ScaleType = Enum.ScaleType.Fit
-    Logo.ImageTransparency = 1
-    Logo.Parent = LoaderFrame
+    local Logo = Library:Create("ImageLabel", {
+        Size = dim_offset(35, 35),
+        Position = dim2(0, 12, 0, 10),
+        BackgroundTransparency = 1,
+        Image = brand.Logo or Library.Brand.Logo,
+        ImageColor3 = themes.preset.accent,
+        ScaleType = Enum.ScaleType.Fit,
+        ImageTransparency = 1,
+        Parent = LoaderFrame,
+    }); Library:Themify(Logo, "accent", "ImageColor3")
 
-    local MainText = Instance.new("TextLabel")
-    MainText.BackgroundTransparency = 1
-    MainText.Position = UDim2.new(0, 55, 0, 12)
-    MainText.Size = UDim2.new(1, -65, 0, 18)
-    MainText.Font = Enum.Font.Code
-    MainText.TextSize = 14
-    MainText.TextXAlignment = Enum.TextXAlignment.Left
-    MainText.TextColor3 = rgb(255, 255, 255)
-    MainText.TextTransparency = 1
-    MainText.Text = "Loading..."
-    MainText.Parent = LoaderFrame
+    local MainText = Library:Create("TextLabel", {
+        BackgroundTransparency = 1,
+        Position = dim2(0, 55, 0, 12),
+        Size = dim2(1, -65, 0, 18),
+        FontFace = Library.Font,
+        TextSize = 14,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        TextColor3 = themes.preset.text_color,
+        TextTransparency = 1,
+        Text = "Loading...",
+        Parent = LoaderFrame,
+    }); Library:Themify(MainText, "text_color", "TextColor3")
 
-    local SubText = Instance.new("TextLabel")
-    SubText.BackgroundTransparency = 1
-    SubText.Position = UDim2.new(0, 55, 0, 30)
-    SubText.Size = UDim2.new(1, -65, 0, 14)
-    SubText.Font = Enum.Font.Code
-    SubText.TextSize = 12
-    SubText.TextXAlignment = Enum.TextXAlignment.Left
-    SubText.TextColor3 = accent
-    SubText.TextTransparency = 1
-    SubText.Text = brand.Subtitle or "production"
-    SubText.Parent = LoaderFrame
+    local SubText = Library:Create("TextLabel", {
+        BackgroundTransparency = 1,
+        Position = dim2(0, 55, 0, 30),
+        Size = dim2(1, -65, 0, 14),
+        FontFace = Library.Font,
+        TextSize = 12,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        TextColor3 = themes.preset.accent,
+        TextTransparency = 1,
+        Text = brand.Subtitle or "production",
+        Parent = LoaderFrame,
+    }); Library:Themify(SubText, "accent", "TextColor3")
 
-    local BottomBarBg = Instance.new("Frame")
-    BottomBarBg.Size = UDim2.new(1, 0, 0, 8)
-    BottomBarBg.Position = UDim2.new(0, 0, 1, -8)
-    BottomBarBg.BackgroundColor3 = BottomBg
-    BottomBarBg.BorderSizePixel = 0
-    BottomBarBg.BackgroundTransparency = 1
-    BottomBarBg.Parent = LoaderFrame
+    local BottomBarBg = Library:Create("Frame", {
+        Size = dim2(1, 0, 0, 8),
+        Position = dim2(0, 0, 1, -8),
+        BackgroundColor3 = themes.preset.outline,
+        BorderSizePixel = 0,
+        BackgroundTransparency = 1,
+        Parent = LoaderFrame,
+    }); Library:Themify(BottomBarBg, "outline", "BackgroundColor3")
 
-    local ProgressTopBorder = Instance.new("Frame")
-    ProgressTopBorder.Size = UDim2.new(1, 0, 0, 1)
-    ProgressTopBorder.Position = UDim2.new(0, 0, 1, -9)
-    ProgressTopBorder.BackgroundColor3 = OuterBorderColor
-    ProgressTopBorder.BorderSizePixel = 0
-    ProgressTopBorder.BackgroundTransparency = 1
-    ProgressTopBorder.Parent = LoaderFrame
+    local ProgressTopBorder = Library:Create("Frame", {
+        Size = dim2(1, 0, 0, 1),
+        Position = dim2(0, 0, 1, -9),
+        BackgroundColor3 = themes.preset.outline,
+        BorderSizePixel = 0,
+        BackgroundTransparency = 1,
+        Parent = LoaderFrame,
+    }); Library:Themify(ProgressTopBorder, "outline", "BackgroundColor3")
 
-    local ProgressFill = Instance.new("Frame")
-    ProgressFill.Size = UDim2.new(0, 0, 1, 0)
-    ProgressFill.BackgroundColor3 = accent
-    ProgressFill.BorderSizePixel = 0
-    ProgressFill.BackgroundTransparency = 1
-    ProgressFill.Parent = BottomBarBg
+    local ProgressFill = Library:Create("Frame", {
+        Size = dim2(0, 0, 1, 0),
+        BackgroundColor3 = themes.preset.accent,
+        BorderSizePixel = 0,
+        BackgroundTransparency = 1,
+        Parent = BottomBarBg,
+    }); Library:Themify(ProgressFill, "accent", "BackgroundColor3")
 
     local gameName = "Game"
     if brand.GameNames and brand.GameNames[game.PlaceId] then
         gameName = brand.GameNames[game.PlaceId]
-    end
-    task.spawn(function()
-        if game.PlaceId > 0 then
-            local success, info = pcall(function()
-                return game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId)
-            end)
-            if success and info and info.Name and not (brand.GameNames and brand.GameNames[game.PlaceId]) then
-                gameName = info.Name
+    else
+        task.spawn(function()
+            if game.PlaceId > 0 then
+                local success, info = pcall(function()
+                    return game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId)
+                end)
+                if success and info and info.Name then
+                    gameName = info.Name
+                end
             end
-        end
-    end)
+        end)
+    end
 
     local FadeInfo = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
     TweenService:Create(OuterBorder, FadeInfo, { BackgroundTransparency = 0 }):Play()
@@ -5186,14 +5193,14 @@ function Library:ShowLoader(opts)
     fillFade.Completed:Wait()
 
     local LoadTween = TweenService:Create(ProgressFill, TweenInfo.new(duration, Enum.EasingStyle.Linear), {
-        Size = UDim2.new(1, 0, 1, 0)
+        Size = dim2(1, 0, 1, 0)
     })
     LoadTween:Play()
 
     task.wait(duration * 0.5)
     MainText.Text = gameName
     TweenService:Create(MainText, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-        Position = UDim2.new(0, 55, 0, 10)
+        Position = dim2(0, 55, 0, 10)
     }):Play()
     TweenService:Create(SubText, TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
         TextTransparency = 0
@@ -5218,199 +5225,198 @@ function Library:ShowLoader(opts)
 end
 
 ----------------------------------------------------------------
--- Compact log notifications (BitchBot style)
+-- Log notifications (BitchBot style) — Themify accent
 ----------------------------------------------------------------
 function Library:LogNotify(message, duration)
     duration = duration or 4
-    local accent = BB_Accent()
     local ParentGui = BB_ParentGui()
 
     local NotifGui = ParentGui:FindFirstChild("BBotImguiLogs")
     if not NotifGui then
-        NotifGui = Instance.new("ScreenGui")
-        NotifGui.Name = "BBotImguiLogs"
-        NotifGui.ResetOnSpawn = false
-        NotifGui.IgnoreGuiInset = true
-        NotifGui.Parent = ParentGui
-
-        local Container = Instance.new("Frame")
-        Container.Name = "LogContainer"
-        Container.Size = UDim2.fromOffset(350, 300)
-        Container.Position = UDim2.fromOffset(10, 10)
-        Container.BackgroundTransparency = 1
-        Container.Parent = NotifGui
-
-        local UIListLayout = Instance.new("UIListLayout")
-        UIListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-        UIListLayout.VerticalAlignment = Enum.VerticalAlignment.Top
-        UIListLayout.Padding = UDim.new(0, 3)
-        UIListLayout.Parent = Container
+        NotifGui = Library:Create("ScreenGui", {
+            Name = "BBotImguiLogs",
+            ResetOnSpawn = false,
+            IgnoreGuiInset = true,
+            Parent = ParentGui,
+        })
+        Library:Create("Frame", {
+            Name = "LogContainer",
+            Size = dim_offset(350, 300),
+            Position = dim_offset(10, 10),
+            BackgroundTransparency = 1,
+            Parent = NotifGui,
+        })
+        local container = NotifGui.LogContainer
+        local layout = Instance.new("UIListLayout")
+        layout.SortOrder = Enum.SortOrder.LayoutOrder
+        layout.Padding = dim(0, 3)
+        layout.Parent = container
     end
 
-    local Container = NotifGui:FindFirstChild("LogContainer")
-    local Outer = Instance.new("Frame")
-    Outer.Size = UDim2.fromOffset(0, 22)
-    Outer.ClipsDescendants = true
-    Outer.BackgroundColor3 = rgb(15, 15, 15)
-    Outer.BorderSizePixel = 0
-    Outer.Parent = Container
+    local Container = NotifGui.LogContainer
+    local Outer = Library:Create("Frame", {
+        Size = dim_offset(0, 22),
+        ClipsDescendants = true,
+        BackgroundColor3 = themes.preset.outline,
+        BorderSizePixel = 0,
+        Parent = Container,
+    }); Library:Themify(Outer, "outline", "BackgroundColor3")
 
-    local Inner = Instance.new("Frame")
-    Inner.Size = UDim2.new(1, -2, 1, -2)
-    Inner.Position = UDim2.fromOffset(1, 1)
-    Inner.BackgroundColor3 = rgb(60, 60, 60)
-    Inner.BorderSizePixel = 0
-    Inner.Parent = Outer
+    local Inner = Library:Create("Frame", {
+        Size = dim2(1, -2, 1, -2),
+        Position = dim2(0, 1, 0, 1),
+        BackgroundColor3 = themes.preset.inline,
+        BorderSizePixel = 0,
+        Parent = Outer,
+    }); Library:Themify(Inner, "inline", "BackgroundColor3")
 
-    local Main = Instance.new("Frame")
-    Main.Size = UDim2.new(1, -2, 1, -2)
-    Main.Position = UDim2.fromOffset(1, 1)
-    Main.BackgroundColor3 = rgb(35, 35, 35)
-    Main.BorderSizePixel = 0
-    Main.Parent = Inner
+    local Main = Library:Create("Frame", {
+        Size = dim2(1, -2, 1, -2),
+        Position = dim2(0, 1, 0, 1),
+        BackgroundColor3 = themes.preset.background,
+        BorderSizePixel = 0,
+        Parent = Inner,
+    }); Library:Themify(Main, "background", "BackgroundColor3")
 
-    local Accent = Instance.new("Frame")
-    Accent.Size = UDim2.new(1, 0, 0, 1)
-    Accent.BackgroundColor3 = accent
-    Accent.BorderSizePixel = 0
-    Accent.Parent = Main
+    local Accent = Library:Create("Frame", {
+        Size = dim2(1, 0, 0, 1),
+        BackgroundColor3 = themes.preset.accent,
+        BorderSizePixel = 0,
+        Parent = Main,
+    }); Library:Themify(Accent, "accent", "BackgroundColor3")
 
-    local Logo = Instance.new("ImageLabel")
-    Logo.Size = UDim2.fromOffset(16, 16)
-    Logo.Position = UDim2.new(0, 5, 0.5, -8)
-    Logo.BackgroundTransparency = 1
-    Logo.Image = Library.Brand.Logo
-    Logo.ImageColor3 = accent
-    Logo.ScaleType = Enum.ScaleType.Fit
-    Logo.Parent = Main
+    local Logo = Library:Create("ImageLabel", {
+        Size = dim_offset(16, 16),
+        Position = dim2(0, 5, 0.5, -8),
+        BackgroundTransparency = 1,
+        Image = Library.Brand.Logo,
+        ImageColor3 = themes.preset.accent,
+        ScaleType = Enum.ScaleType.Fit,
+        Parent = Main,
+    }); Library:Themify(Logo, "accent", "ImageColor3")
 
-    local Text = Instance.new("TextLabel")
-    Text.BackgroundTransparency = 1
-    Text.Position = UDim2.fromOffset(26, 0)
-    Text.Size = UDim2.new(1, -30, 1, 0)
-    Text.Font = Enum.Font.Code
-    Text.TextSize = 12
-    Text.TextXAlignment = Enum.TextXAlignment.Left
-    Text.TextColor3 = rgb(255, 255, 255)
-    Text.Text = tostring(message)
-    Text.Parent = Main
+    local Text = Library:Create("TextLabel", {
+        BackgroundTransparency = 1,
+        Position = dim2(0, 26, 0, 0),
+        Size = dim2(1, -30, 1, 0),
+        FontFace = Library.Font,
+        TextSize = 12,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        TextColor3 = themes.preset.text_color,
+        Text = tostring(message),
+        Parent = Main,
+    }); Library:Themify(Text, "text_color", "TextColor3")
 
-    local textWidth = math.clamp(#tostring(message) * 7 + 40, 120, 340)
-    Outer.Size = UDim2.fromOffset(textWidth, 22)
-
+    Outer.Size = dim_offset(math.clamp(#tostring(message) * 7 + 40, 120, 340), 22)
     task.delay(duration, function()
-        if Outer and Outer.Parent then
-            Outer:Destroy()
-        end
+        if Outer and Outer.Parent then Outer:Destroy() end
     end)
 end
 
 ----------------------------------------------------------------
--- Target HUD
--- Returns: { SetTarget(player|nil), SetEnabled(bool), Destroy() }
+-- Target HUD — Create/Themify/Draggify + SetTarget API
 ----------------------------------------------------------------
 function Library:InitTargetHUD(opts)
     opts = opts or {}
-    local accent = BB_Accent()
     local ParentGui = BB_ParentGui()
     if ParentGui:FindFirstChild("BBotTargetHUD") then
         ParentGui.BBotTargetHUD:Destroy()
     end
 
-    local ScreenGui = Instance.new("ScreenGui")
-    ScreenGui.Name = "BBotTargetHUD"
-    ScreenGui.ResetOnSpawn = false
-    ScreenGui.IgnoreGuiInset = true
-    ScreenGui.Parent = ParentGui
+    local ScreenGui = Library:Create("ScreenGui", {
+        Name = "BBotTargetHUD",
+        ResetOnSpawn = false,
+        IgnoreGuiInset = true,
+        Parent = ParentGui,
+    })
 
-    local HudOuter = Instance.new("Frame")
-    HudOuter.Size = UDim2.fromOffset(240, 80)
-    HudOuter.Position = opts.Position or UDim2.new(0.5, 50, 0.5, 50)
-    HudOuter.BackgroundColor3 = rgb(15, 15, 15)
-    HudOuter.BorderSizePixel = 0
-    HudOuter.Visible = false
-    HudOuter.Parent = ScreenGui
+    local HudOuter = Library:Create("Frame", {
+        Size = dim_offset(240, 80),
+        Position = opts.Position or dim2(0.5, 50, 0.5, 50),
+        BackgroundColor3 = themes.preset.outline,
+        BorderSizePixel = 0,
+        Visible = false,
+        Parent = ScreenGui,
+    }); Library:Themify(HudOuter, "outline", "BackgroundColor3")
+    Library:Draggify(HudOuter)
 
-    local HudInner = Instance.new("Frame")
-    HudInner.Size = UDim2.new(1, -2, 1, -2)
-    HudInner.Position = UDim2.fromOffset(1, 1)
-    HudInner.BackgroundColor3 = rgb(60, 60, 60)
-    HudInner.BorderSizePixel = 0
-    HudInner.Parent = HudOuter
+    local HudInner = Library:Create("Frame", {
+        Size = dim2(1, -2, 1, -2),
+        Position = dim2(0, 1, 0, 1),
+        BackgroundColor3 = themes.preset.inline,
+        BorderSizePixel = 0,
+        Parent = HudOuter,
+    }); Library:Themify(HudInner, "inline", "BackgroundColor3")
 
-    local HudMain = Instance.new("Frame")
-    HudMain.Size = UDim2.new(1, -2, 1, -2)
-    HudMain.Position = UDim2.fromOffset(1, 1)
-    HudMain.BackgroundColor3 = rgb(35, 35, 35)
-    HudMain.BorderSizePixel = 0
-    HudMain.Parent = HudInner
+    local HudMain = Library:Create("Frame", {
+        Size = dim2(1, -2, 1, -2),
+        Position = dim2(0, 1, 0, 1),
+        BackgroundColor3 = themes.preset.background,
+        BorderSizePixel = 0,
+        Parent = HudInner,
+    }); Library:Themify(HudMain, "background", "BackgroundColor3")
 
-    local TopAccent = Instance.new("Frame")
-    TopAccent.Size = UDim2.new(1, 0, 0, 1)
-    TopAccent.BackgroundColor3 = accent
-    TopAccent.BorderSizePixel = 0
-    TopAccent.Parent = HudMain
+    local TopAccent = Library:Create("Frame", {
+        Size = dim2(1, 0, 0, 1),
+        BackgroundColor3 = themes.preset.accent,
+        BorderSizePixel = 0,
+        Parent = HudMain,
+    }); Library:Themify(TopAccent, "accent", "BackgroundColor3")
 
-    local Title = Instance.new("TextLabel")
-    Title.BackgroundTransparency = 1
-    Title.Position = UDim2.fromOffset(10, 8)
-    Title.Size = UDim2.new(1, -20, 0, 16)
-    Title.Font = Enum.Font.Code
-    Title.TextSize = 13
-    Title.TextXAlignment = Enum.TextXAlignment.Left
-    Title.TextColor3 = rgb(255, 255, 255)
-    Title.Text = "target"
-    Title.Parent = HudMain
+    local Title = Library:Create("TextLabel", {
+        BackgroundTransparency = 1,
+        Position = dim2(0, 10, 0, 8),
+        Size = dim2(1, -20, 0, 16),
+        FontFace = Library.Font,
+        TextSize = 13,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        TextColor3 = themes.preset.text_color,
+        Text = "target",
+        Parent = HudMain,
+    }); Library:Themify(Title, "text_color", "TextColor3")
 
-    local Info = Instance.new("TextLabel")
-    Info.BackgroundTransparency = 1
-    Info.Position = UDim2.fromOffset(10, 28)
-    Info.Size = UDim2.new(1, -20, 0, 14)
-    Info.Font = Enum.Font.Code
-    Info.TextSize = 12
-    Info.TextXAlignment = Enum.TextXAlignment.Left
-    Info.TextColor3 = rgb(200, 200, 200)
-    Info.Text = "hp — 0/100"
-    Info.Parent = HudMain
+    local Info = Library:Create("TextLabel", {
+        BackgroundTransparency = 1,
+        Position = dim2(0, 10, 0, 28),
+        Size = dim2(1, -20, 0, 14),
+        FontFace = Library.Font,
+        TextSize = 12,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        TextColor3 = themes.preset.text_color,
+        Text = "hp — 0/100",
+        Parent = HudMain,
+    }); Library:Themify(Info, "text_color", "TextColor3")
 
-    local BarBg = Instance.new("Frame")
-    BarBg.Size = UDim2.new(1, -20, 0, 6)
-    BarBg.Position = UDim2.new(0, 10, 1, -18)
-    BarBg.BackgroundColor3 = rgb(20, 20, 20)
-    BarBg.BorderSizePixel = 0
-    BarBg.Parent = HudMain
+    local BarBg = Library:Create("Frame", {
+        Size = dim2(1, -20, 0, 6),
+        Position = dim2(0, 10, 1, -18),
+        BackgroundColor3 = themes.preset.outline,
+        BorderSizePixel = 0,
+        Parent = HudMain,
+    }); Library:Themify(BarBg, "outline", "BackgroundColor3")
 
-    local Bar = Instance.new("Frame")
-    Bar.Size = UDim2.new(1, 0, 1, 0)
-    Bar.BackgroundColor3 = accent
-    Bar.BorderSizePixel = 0
-    Bar.Parent = BarBg
+    local Bar = Library:Create("Frame", {
+        Size = dim2(1, 0, 1, 0),
+        BackgroundColor3 = themes.preset.accent,
+        BorderSizePixel = 0,
+        Parent = BarBg,
+    }); Library:Themify(Bar, "accent", "BackgroundColor3")
 
     local enabled = opts.Enabled ~= false
     local currentPlayer = nil
     local healthConn = nil
     local api = {}
 
-    local function refreshAccent()
-        local a = BB_Accent()
-        TopAccent.BackgroundColor3 = a
-        Bar.BackgroundColor3 = a
-    end
-
     local function updateHealth(hum)
         if not hum then return end
         local hp, maxHp = hum.Health, hum.MaxHealth
         Info.Text = string.format("hp — %d/%d", math.floor(hp), math.floor(maxHp))
         local r = maxHp > 0 and math.clamp(hp / maxHp, 0, 1) or 0
-        Bar.Size = UDim2.new(r, 0, 1, 0)
+        Bar.Size = dim2(r, 0, 1, 0)
     end
 
     function api.SetTarget(player)
-        refreshAccent()
-        if healthConn then
-            healthConn:Disconnect()
-            healthConn = nil
-        end
+        if healthConn then healthConn:Disconnect(); healthConn = nil end
         currentPlayer = player
         if not player or not enabled then
             HudOuter.Visible = false
@@ -5418,23 +5424,17 @@ function Library:InitTargetHUD(opts)
         end
         Title.Text = player.DisplayName or player.Name
         HudOuter.Visible = true
-        local char = player.Character
-        local hum = char and char:FindFirstChildOfClass("Humanoid")
+        local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
         if hum then
             updateHealth(hum)
-            healthConn = hum.HealthChanged:Connect(function()
-                updateHealth(hum)
-            end)
+            healthConn = hum.HealthChanged:Connect(function() updateHealth(hum) end)
         end
     end
 
     function api.SetEnabled(v)
-        enabled = v and true or false
-        if not enabled then
-            HudOuter.Visible = false
-        elseif currentPlayer then
-            api.SetTarget(currentPlayer)
-        end
+        enabled = not not v
+        if not enabled then HudOuter.Visible = false
+        elseif currentPlayer then api.SetTarget(currentPlayer) end
     end
 
     function api.Destroy()
@@ -5442,31 +5442,9 @@ function Library:InitTargetHUD(opts)
         ScreenGui:Destroy()
     end
 
-    -- drag
-    local dragging, dragStart, startPos
-    HudOuter.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = true
-            dragStart = input.Position
-            startPos = HudOuter.Position
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then
-                    dragging = false
-                end
-            end)
-        end
-    end)
-    InputService.InputChanged:Connect(function(input)
-        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-            local delta = input.Position - dragStart
-            HudOuter.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-        end
-    end)
-
-    -- optional mouse-proximity auto (off by default — combat should drive SetTarget)
     if opts.AutoMouse then
         local maxPx = opts.AutoMouseRange or 95
-        RunService.RenderStepped:Connect(function()
+        Library:Connection(RunService.RenderStepped, function()
             if not enabled then return end
             local mousePos = InputService:GetMouseLocation()
             local closest, best = nil, maxPx
@@ -5477,7 +5455,7 @@ function Library:InitTargetHUD(opts)
                     if hrp and hum and hum.Health > 0 then
                         local sp, on = Camera:WorldToViewportPoint(hrp.Position)
                         if on then
-                            local d = (Vector2.new(sp.X, sp.Y) - mousePos).Magnitude
+                            local d = (vec2(sp.X, sp.Y) - mousePos).Magnitude
                             if d < best then best = d; closest = plr end
                         end
                     end
@@ -5491,81 +5469,147 @@ function Library:InitTargetHUD(opts)
 end
 
 ----------------------------------------------------------------
--- Chat Spy
+-- Chat Spy — full UI (logo, drag, clear) + lib theme
 ----------------------------------------------------------------
 function Library:InitChatSpy(opts)
     opts = opts or {}
-    local accent = BB_Accent()
     local ParentGui = BB_ParentGui()
-    if ParentGui:FindFirstChild("BBotChatSpy") then
-        ParentGui.BBotChatSpy:Destroy()
+    if ParentGui:FindFirstChild("BBotImguiChatSpy") then
+        ParentGui.BBotImguiChatSpy:Destroy()
     end
 
-    local ScreenGui = Instance.new("ScreenGui")
-    ScreenGui.Name = "BBotChatSpy"
-    ScreenGui.ResetOnSpawn = false
-    ScreenGui.IgnoreGuiInset = true
-    ScreenGui.Parent = ParentGui
+    local SpyGui = Library:Create("ScreenGui", {
+        Name = "BBotImguiChatSpy",
+        ResetOnSpawn = false,
+        IgnoreGuiInset = true,
+        Parent = ParentGui,
+    })
 
-    local Container = Instance.new("Frame")
-    Container.Size = opts.Size or UDim2.fromOffset(320, 220)
-    Container.Position = opts.Position or UDim2.fromOffset(20, 200)
-    Container.BackgroundColor3 = rgb(15, 15, 15)
-    Container.BorderSizePixel = 0
-    Container.Parent = ScreenGui
+    local Container = Library:Create("Frame", {
+        Name = "SpyContainer",
+        Size = opts.Size or dim_offset(380, 200),
+        Position = opts.Position or dim_offset(10, 220),
+        BackgroundTransparency = 1,
+        Parent = SpyGui,
+    })
 
-    local Inner = Instance.new("Frame")
-    Inner.Size = UDim2.new(1, -2, 1, -2)
-    Inner.Position = UDim2.fromOffset(1, 1)
-    Inner.BackgroundColor3 = rgb(35, 35, 35)
-    Inner.BorderSizePixel = 0
-    Inner.Parent = Container
+    local Outer = Library:Create("Frame", {
+        Size = dim2(1, 0, 1, 0),
+        BackgroundColor3 = themes.preset.outline,
+        BorderSizePixel = 0,
+        Parent = Container,
+    }); Library:Themify(Outer, "outline", "BackgroundColor3")
+    Library:Draggify(Outer)
 
-    local TopAccent = Instance.new("Frame")
-    TopAccent.Size = UDim2.new(1, 0, 0, 1)
-    TopAccent.BackgroundColor3 = accent
-    TopAccent.BorderSizePixel = 0
-    TopAccent.Parent = Inner
+    local Inner = Library:Create("Frame", {
+        Size = dim2(1, -2, 1, -2),
+        Position = dim2(0, 1, 0, 1),
+        BackgroundColor3 = themes.preset.inline,
+        BorderSizePixel = 0,
+        Parent = Outer,
+    }); Library:Themify(Inner, "inline", "BackgroundColor3")
 
-    local Header = Instance.new("TextLabel")
-    Header.BackgroundTransparency = 1
-    Header.Size = UDim2.new(1, -10, 0, 22)
-    Header.Position = UDim2.fromOffset(8, 4)
-    Header.Font = Enum.Font.Code
-    Header.TextSize = 13
-    Header.TextXAlignment = Enum.TextXAlignment.Left
-    Header.TextColor3 = rgb(255, 255, 255)
-    Header.Text = "chat spy"
-    Header.Parent = Inner
+    local Main = Library:Create("Frame", {
+        Size = dim2(1, -2, 1, -2),
+        Position = dim2(0, 1, 0, 1),
+        BackgroundColor3 = themes.preset.background,
+        BorderSizePixel = 0,
+        Parent = Inner,
+    }); Library:Themify(Main, "background", "BackgroundColor3")
 
-    local Scroll = Instance.new("ScrollingFrame")
-    Scroll.Size = UDim2.new(1, -12, 1, -32)
-    Scroll.Position = UDim2.fromOffset(6, 26)
-    Scroll.BackgroundColor3 = rgb(12, 12, 12)
-    Scroll.BorderSizePixel = 0
-    Scroll.ScrollBarThickness = 3
-    Scroll.CanvasSize = UDim2.new(0, 0, 0, 0)
-    Scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
-    Scroll.Parent = Inner
+    local Accent = Library:Create("Frame", {
+        Size = dim2(1, 0, 0, 1),
+        BackgroundColor3 = themes.preset.accent,
+        BorderSizePixel = 0,
+        Parent = Main,
+    }); Library:Themify(Accent, "accent", "BackgroundColor3")
+
+    local Header = Library:Create("Frame", {
+        Size = dim2(1, 0, 0, 22),
+        Position = dim2(0, 0, 0, 1),
+        BackgroundTransparency = 1,
+        Parent = Main,
+    })
+
+    local Logo = Library:Create("ImageLabel", {
+        Size = dim_offset(18, 18),
+        Position = dim2(0, 5, 0.5, -9),
+        BackgroundTransparency = 1,
+        Image = Library.Brand.Logo,
+        ImageColor3 = themes.preset.accent,
+        ScaleType = Enum.ScaleType.Fit,
+        Parent = Header,
+    }); Library:Themify(Logo, "accent", "ImageColor3")
+
+    local TitleLabel = Library:Create("TextLabel", {
+        Size = dim2(1, -125, 1, 0),
+        Position = dim2(0, 28, 0, 0),
+        BackgroundTransparency = 1,
+        FontFace = Library.Font,
+        Text = (Library.Brand.Name or "BitchBot") .. " | Chat Spy",
+        TextColor3 = themes.preset.text_color,
+        TextSize = 12,
+        TextXAlignment = Enum.TextXAlignment.Left,
+        Parent = Header,
+    }); Library:Themify(TitleLabel, "text_color", "TextColor3")
+
+    local ClearBtn = Library:Create("TextButton", {
+        Size = dim_offset(42, 16),
+        Position = dim2(1, -52, 0.5, -8),
+        BackgroundColor3 = themes.preset.outline,
+        BorderSizePixel = 0,
+        FontFace = Library.Font,
+        Text = "Clear",
+        TextColor3 = themes.preset.text_color,
+        TextSize = 10,
+        Parent = Header,
+    }); Library:Themify(ClearBtn, "outline", "BackgroundColor3")
+    Library:Themify(ClearBtn, "text_color", "TextColor3")
+
+    local ScrollBg = Library:Create("Frame", {
+        Size = dim2(1, -8, 1, -30),
+        Position = dim2(0, 4, 0, 26),
+        BackgroundColor3 = themes.preset.outline,
+        BorderSizePixel = 0,
+        Parent = Main,
+    }); Library:Themify(ScrollBg, "outline", "BackgroundColor3")
+
+    local Scroll = Library:Create("ScrollingFrame", {
+        Size = dim2(1, -4, 1, -4),
+        Position = dim2(0, 2, 0, 2),
+        BackgroundColor3 = themes.preset.background,
+        BorderSizePixel = 0,
+        ScrollBarThickness = 3,
+        CanvasSize = dim2(0, 0, 0, 0),
+        AutomaticCanvasSize = Enum.AutomaticSize.Y,
+        Parent = ScrollBg,
+    }); Library:Themify(Scroll, "background", "BackgroundColor3")
 
     local List = Instance.new("UIListLayout")
     List.SortOrder = Enum.SortOrder.LayoutOrder
-    List.Padding = UDim.new(0, 2)
+    List.Padding = dim(0, 2)
     List.Parent = Scroll
 
     local function addMessage(name, text)
-        local row = Instance.new("TextLabel")
-        row.BackgroundTransparency = 1
-        row.Size = UDim2.new(1, -4, 0, 16)
-        row.Font = Enum.Font.Code
-        row.TextSize = 12
-        row.TextXAlignment = Enum.TextXAlignment.Left
-        row.TextColor3 = rgb(220, 220, 220)
-        row.Text = string.format("[%s]: %s", tostring(name), tostring(text))
-        row.TextWrapped = true
-        row.AutomaticSize = Enum.AutomaticSize.Y
-        row.Parent = Scroll
+        local row = Library:Create("TextLabel", {
+            BackgroundTransparency = 1,
+            Size = dim2(1, -6, 0, 16),
+            FontFace = Library.Font,
+            TextSize = 12,
+            TextXAlignment = Enum.TextXAlignment.Left,
+            TextColor3 = themes.preset.text_color,
+            Text = string.format("[%s]: %s", tostring(name), tostring(text)),
+            TextWrapped = true,
+            AutomaticSize = Enum.AutomaticSize.Y,
+            Parent = Scroll,
+        }); Library:Themify(row, "text_color", "TextColor3")
     end
+
+    ClearBtn.MouseButton1Click:Connect(function()
+        for _, child in ipairs(Scroll:GetChildren()) do
+            if child:IsA("TextLabel") then child:Destroy() end
+        end
+    end)
 
     local TextChatService = game:GetService("TextChatService")
     task.spawn(function()
@@ -5581,9 +5625,7 @@ function Library:InitChatSpy(opts)
         else
             local function hook(player)
                 player.Chatted:Connect(function(msg)
-                    if player ~= lp then
-                        addMessage(player.Name, msg)
-                    end
+                    if player ~= lp then addMessage(player.Name, msg) end
                 end)
             end
             for _, player in ipairs(Players:GetPlayers()) do hook(player) end
@@ -5594,14 +5636,15 @@ function Library:InitChatSpy(opts)
     addMessage("system", "Chat spy ready!")
 
     return {
-        Gui = ScreenGui,
-        Destroy = function() ScreenGui:Destroy() end,
-        SetVisible = function(v) ScreenGui.Enabled = v and true or false end,
+        Gui = SpyGui,
+        Destroy = function() SpyGui:Destroy() end,
+        SetVisible = function(v) SpyGui.Enabled = not not v end,
     }
 end
 
--- Convenience aliases
-function Library:NotifyLog(msg, dur) return self:LogNotify(msg, dur) end
+function Library:NotifyLog(msg, dur)
+    return self:LogNotify(msg, dur)
+end
 
 
 return Library, Notifications, themes
