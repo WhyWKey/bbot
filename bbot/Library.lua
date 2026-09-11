@@ -5553,17 +5553,27 @@ function Library:InitChatSpy(opts)
         Parent = Header,
     }); Library:Themify(TitleLabel, "text_color", "TextColor3")
 
-    local ClearBtn = Library:Create("TextButton", {
-        Size = dim_offset(42, 16),
-        Position = dim2(1, -52, 0.5, -8),
+    -- Clear button (menu-styled: outline shell + background fill) — no Auto toggle
+    local ClearOutline = Library:Create("Frame", {
+        Size = dim_offset(46, 18),
+        Position = dim2(1, -54, 0.5, -9),
         BackgroundColor3 = themes.preset.outline,
+        BorderSizePixel = 0,
+        Parent = Header,
+    }); Library:Themify(ClearOutline, "outline", "BackgroundColor3")
+
+    local ClearBtn = Library:Create("TextButton", {
+        Size = dim2(1, -2, 1, -2),
+        Position = dim2(0, 1, 0, 1),
+        BackgroundColor3 = themes.preset.background,
         BorderSizePixel = 0,
         FontFace = Library.Font,
         Text = "Clear",
         TextColor3 = themes.preset.text_color,
-        TextSize = 10,
-        Parent = Header,
-    }); Library:Themify(ClearBtn, "outline", "BackgroundColor3")
+        TextSize = 11,
+        AutoButtonColor = false,
+        Parent = ClearOutline,
+    }); Library:Themify(ClearBtn, "background", "BackgroundColor3")
     Library:Themify(ClearBtn, "text_color", "TextColor3")
 
     local ScrollBg = Library:Create("Frame", {
