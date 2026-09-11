@@ -4868,20 +4868,31 @@
     -- Notification Library
         -- IGNORE: , TweenInfo.new(1, Enum.EasingStyle.Exponential, Enum.EasingDirection.Out)
         function Notifications:RefreshNotifications()
+            -- Compact stack: only active toasts, tight 4px gap, no holes
             local offset = 72
-            local info = TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-            for _, v in Notifications.Notifs do
-                if v and v.Parent then
-                    Library:Tween(v, { Position = dim_offset(14, offset) }, info)
-                    offset += (v.AbsoluteSize.Y + 6)
+            local gap = 4
+            local info = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+            local list = {}
+            for _, v in pairs(Notifications.Notifs) do
+                if v and v.Parent and not v:GetAttribute("Dismissing") then
+                    table.insert(list, v)
                 end
+            end
+            table.sort(list, function(a, b)
+                return (a:GetAttribute("Order") or 0) < (b:GetAttribute("Order") or 0)
+            end)
+            for _, v in ipairs(list) do
+                local h = v:GetAttribute("Height") or v.AbsoluteSize.Y
+                if h < 1 then h = 28 end
+                Library:Tween(v, { Position = dim_offset(14, offset) }, info)
+                offset += h + gap
             end
             return offset
         end
 
         function Notifications:FadeNotifs(path, is_fading)
             local goal = is_fading and 1 or 0
-            local info = TweenInfo.new(0.32, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+            local info = TweenInfo.new(0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
             Library:Tween(path, { BackgroundTransparency = goal }, info)
             for _, instance in path:GetDescendants() do
                 if instance:IsA("TextLabel") then
@@ -4896,9 +4907,9 @@
             end
         end
 
+        Notifications._OrderSeq = Notifications._OrderSeq or 0
+
         function Notifications:Create(properties)
-            -- Compact BitchBot toast (video style): fixed text width, left accent,
-            -- bottom accent progress = lifetime (NOT full-screen bars)
             local Cfg = {
                 Name = properties.Name or "Notification",
                 Lifetime = properties.LifeTime or properties.Lifetime or 4,
@@ -4907,18 +4918,23 @@
             local Items = Cfg.Items
             local lifetime = math.max(0.35, tonumber(Cfg.Lifetime) or 4)
 
+            Notifications._OrderSeq += 1
+            local orderId = Notifications._OrderSeq
+
             Items.Outline = Library:Create("Frame", {
                 Parent = Library.Items,
                 Name = "\0",
                 BorderSizePixel = 0,
-                AutomaticSize = Enum.AutomaticSize.None, -- critical: don't expand to screen
+                AutomaticSize = Enum.AutomaticSize.None,
                 Position = dim_offset(14, 72),
-                Size = dim_offset(180, 28), -- temp; resized to text below
+                Size = dim_offset(160, 28),
                 BackgroundColor3 = themes.preset.background,
                 BackgroundTransparency = 1,
                 ZIndex = 250,
                 ClipsDescendants = true,
             }); Library:Themify(Items.Outline, "background", "BackgroundColor3")
+            Items.Outline:SetAttribute("Order", orderId)
+            Items.Outline:SetAttribute("Height", 28)
 
             local stroke = Library:Create("UIStroke", {
                 Parent = Items.Outline,
@@ -4927,12 +4943,10 @@
                 Transparency = 1,
             }); Library:Themify(stroke, "outline", "Color")
 
-            -- Left accent strip (like video)
             Items.LeftAccent = Library:Create("Frame", {
                 Parent = Items.Outline,
                 BorderSizePixel = 0,
                 Size = dim2(0, 2, 1, 0),
-                Position = dim2(0, 0, 0, 0),
                 BackgroundColor3 = themes.preset.accent,
                 BackgroundTransparency = 1,
                 ZIndex = 252,
@@ -4965,7 +4979,6 @@
                 TextXAlignment = Enum.TextXAlignment.Left,
             }); Library:Themify(Items.Text, "text_color", "TextColor3")
 
-            -- Bottom lifetime bar (width = notif width only)
             Items.ProgressBg = Library:Create("Frame", {
                 Parent = Items.Outline,
                 BorderSizePixel = 0,
@@ -4985,29 +4998,31 @@
                 ZIndex = 253,
             }); Library:Themify(Items.Progress, "accent", "BackgroundColor3")
 
-            -- Fit box to text (compact — prevents full-screen stretch)
             local function fit()
                 local tw = Items.Text.AbsoluteSize.X
                 local th = Items.Text.AbsoluteSize.Y
-                if tw < 4 then tw = #tostring(Cfg.Name) * 7 end
+                if tw < 4 then tw = math.max(80, #tostring(Cfg.Name) * 7) end
+                if th < 4 then th = 16 end
                 local width = math.clamp(tw + 36, 100, 420)
                 local height = math.max(th + 14, 26)
                 Items.Outline.Size = dim_offset(width, height)
+                Items.Outline:SetAttribute("Height", height)
             end
             fit()
-            task.defer(fit)
+            task.defer(function()
+                fit()
+                Notifications:RefreshNotifications()
+            end)
 
-            local index = #Notifications.Notifs + 1
-            Notifications.Notifs[index] = Items.Outline
+            -- Store by unique key (no array holes / overlap)
+            local key = "n" .. tostring(orderId)
+            Notifications.Notifs[key] = Items.Outline
 
             local offset = Notifications:RefreshNotifications()
-            Items.Outline.Position = dim_offset(0, offset)
+            Items.Outline.Position = dim_offset(14, offset)
 
-            local fadeIn = TweenInfo.new(0.28, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-            Library:Tween(Items.Outline, {
-                BackgroundTransparency = 0.08,
-                Position = dim_offset(14, offset),
-            }, fadeIn)
+            local fadeIn = TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+            Library:Tween(Items.Outline, { BackgroundTransparency = 0.08 }, fadeIn)
             Library:Tween(stroke, { Transparency = 0.2 }, fadeIn)
             Library:Tween(Items.Text, { TextTransparency = 0 }, fadeIn)
             Library:Tween(Items.LeftAccent, { BackgroundTransparency = 0 }, fadeIn)
@@ -5015,7 +5030,6 @@
             Library:Tween(Items.ProgressBg, { BackgroundTransparency = 0.4 }, fadeIn)
             Library:Tween(Items.Progress, { BackgroundTransparency = 0 }, fadeIn)
 
-            -- Progress shrinks over lifetime (accent)
             Library:Tween(
                 Items.Progress,
                 { Size = dim2(0, 0, 1, 0) },
@@ -5024,20 +5038,21 @@
 
             task.spawn(function()
                 task.wait(lifetime)
-                Notifications.Notifs[index] = nil
+                -- Drop out of stack immediately so others close the gap (no overlap)
+                Items.Outline:SetAttribute("Dismissing", true)
+                Notifications.Notifs[key] = nil
                 Notifications:RefreshNotifications()
-                local fadeOut = TweenInfo.new(0.3, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
-                Library:Tween(Items.Outline, {
-                    BackgroundTransparency = 1,
-                    Position = dim_offset(-20, Items.Outline.Position.Y.Offset),
-                }, fadeOut)
+
+                -- Fade in place (no horizontal slide = no overlap with stack)
+                local fadeOut = TweenInfo.new(0.25, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+                Library:Tween(Items.Outline, { BackgroundTransparency = 1 }, fadeOut)
                 Library:Tween(stroke, { Transparency = 1 }, fadeOut)
                 Library:Tween(Items.Text, { TextTransparency = 1 }, fadeOut)
                 Library:Tween(Items.LeftAccent, { BackgroundTransparency = 1 }, fadeOut)
                 Library:Tween(Items.Logo, { ImageTransparency = 1 }, fadeOut)
                 Library:Tween(Items.ProgressBg, { BackgroundTransparency = 1 }, fadeOut)
                 Library:Tween(Items.Progress, { BackgroundTransparency = 1 }, fadeOut)
-                task.wait(0.32)
+                task.wait(0.26)
                 if Items.Outline and Items.Outline.Parent then
                     Items.Outline:Destroy()
                 end
