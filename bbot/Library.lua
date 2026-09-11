@@ -5017,9 +5017,9 @@
             -- Store by unique key (no array holes / overlap)
             local key = "n" .. tostring(orderId)
             Notifications.Notifs[key] = Items.Outline
-
-            local offset = Notifications:RefreshNotifications()
-            Items.Outline.Position = dim_offset(14, offset)
+            -- Refresh already places this toast in the stack (do NOT use returned
+            -- offset — that is the Y *below* the last item and caused the big gap)
+            Notifications:RefreshNotifications()
 
             local fadeIn = TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
             Library:Tween(Items.Outline, { BackgroundTransparency = 0.08 }, fadeIn)
