@@ -5228,94 +5228,20 @@ end
 -- Log notifications (BitchBot style) — Themify accent
 ----------------------------------------------------------------
 function Library:LogNotify(message, duration)
-    duration = duration or 4
-    local ParentGui = BB_ParentGui()
-
-    local NotifGui = ParentGui:FindFirstChild("BBotImguiLogs")
-    if not NotifGui then
-        NotifGui = Library:Create("ScreenGui", {
-            Name = "BBotImguiLogs",
-            ResetOnSpawn = false,
-            IgnoreGuiInset = true,
-            Parent = ParentGui,
+    -- Same system + animations as library Notifications:Create
+    -- (slide in via AnchorPoint, accent line shrink, FadeNotifs out)
+    duration = duration or 3
+    if Notifications and Notifications.Create then
+        Notifications:Create({
+            Name = tostring(message),
+            LifeTime = duration,
         })
-        Library:Create("Frame", {
-            Name = "LogContainer",
-            Size = dim_offset(350, 300),
-            Position = dim_offset(10, 10),
-            BackgroundTransparency = 1,
-            Parent = NotifGui,
-        })
-        local container = NotifGui.LogContainer
-        local layout = Instance.new("UIListLayout")
-        layout.SortOrder = Enum.SortOrder.LayoutOrder
-        layout.Padding = dim(0, 3)
-        layout.Parent = container
+        return
     end
-
-    local Container = NotifGui.LogContainer
-    local Outer = Library:Create("Frame", {
-        Size = dim_offset(0, 22),
-        ClipsDescendants = true,
-        BackgroundColor3 = themes.preset.outline,
-        BorderSizePixel = 0,
-        Parent = Container,
-    }); Library:Themify(Outer, "outline", "BackgroundColor3")
-
-    local Inner = Library:Create("Frame", {
-        Size = dim2(1, -2, 1, -2),
-        Position = dim2(0, 1, 0, 1),
-        BackgroundColor3 = themes.preset.inline,
-        BorderSizePixel = 0,
-        Parent = Outer,
-    }); Library:Themify(Inner, "inline", "BackgroundColor3")
-
-    local Main = Library:Create("Frame", {
-        Size = dim2(1, -2, 1, -2),
-        Position = dim2(0, 1, 0, 1),
-        BackgroundColor3 = themes.preset.background,
-        BorderSizePixel = 0,
-        Parent = Inner,
-    }); Library:Themify(Main, "background", "BackgroundColor3")
-
-    local Accent = Library:Create("Frame", {
-        Size = dim2(1, 0, 0, 1),
-        BackgroundColor3 = themes.preset.accent,
-        BorderSizePixel = 0,
-        Parent = Main,
-    }); Library:Themify(Accent, "accent", "BackgroundColor3")
-
-    local Logo = Library:Create("ImageLabel", {
-        Size = dim_offset(16, 16),
-        Position = dim2(0, 5, 0.5, -8),
-        BackgroundTransparency = 1,
-        Image = Library.Brand.Logo,
-        ImageColor3 = themes.preset.accent,
-        ScaleType = Enum.ScaleType.Fit,
-        Parent = Main,
-    }); Library:Themify(Logo, "accent", "ImageColor3")
-
-    local Text = Library:Create("TextLabel", {
-        BackgroundTransparency = 1,
-        Position = dim2(0, 26, 0, 0),
-        Size = dim2(1, -30, 1, 0),
-        FontFace = Library.Font,
-        TextSize = 12,
-        TextXAlignment = Enum.TextXAlignment.Left,
-        TextColor3 = themes.preset.text_color,
-        Text = tostring(message),
-        Parent = Main,
-    }); Library:Themify(Text, "text_color", "TextColor3")
-
-    Outer.Size = dim_offset(math.clamp(#tostring(message) * 7 + 40, 120, 340), 22)
-    task.delay(duration, function()
-        if Outer and Outer.Parent then Outer:Destroy() end
-    end)
+    -- Fallback if Notifications missing (should not happen)
+    warn("[BitchBot] Notifications:Create unavailable")
 end
 
-----------------------------------------------------------------
--- Target HUD — Create/Themify/Draggify + SetTarget API
-----------------------------------------------------------------
 function Library:InitTargetHUD(opts)
     opts = opts or {}
     local ParentGui = BB_ParentGui()
