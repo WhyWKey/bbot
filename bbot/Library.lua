@@ -16,7 +16,7 @@
 
 -- Library init
     getgenv().Library = {
-        Directory = "BitchBot",
+        Directory = "Bbot v3",
         Folders = {
             "/fonts",
             "/configs",
@@ -1898,7 +1898,7 @@
                         TextColor3 = rgb(239, 239, 239);
                         BorderColor3 = rgb(0, 0, 0);
                         RichText = true;
-                        Text = Cfg.Name .. "pw";
+                        Text = Cfg.Name .. "lua";
                         Parent = Items.Watermark;
                         Name = "\0";
                         BackgroundTransparency = 1;
@@ -4804,7 +4804,7 @@
             Section:Toggle({Name = "Keybind List", Flag = "KeybindList", Callback = window.ToggleKeybindList})
             Section:Toggle({Name = "Toggle Status", Flag = "Status", Callback = window.ToggleStatus})
             Section:Textbox({Name = "Custom Menu Name", Callback = window.ChangeTitle, Default = window.Name, Placeholder = "Title name here..."})
-            Section:Textbox({Name = "Custom Watermark Name", Callback = window.ChangeWatermarkTitle, Default = window.Name .. ".pw", Placeholder = "Title name here..."})
+            Section:Textbox({Name = "Custom Watermark Name", Callback = window.ChangeWatermarkTitle, Default = window.Name .. ".lua", Placeholder = "Title name here..."})
             Section:Dropdown({Name = "Tweening Style", Options = {"Linear", "Sine", "Back", "Quad", "Quart", "Quint", "Bounce", "Elastic", "Exponential", "Circular", "Cubic"}, Flag = "LibraryEasingStyle", Default = "Quint", Callback = function(Option)
                 Library.EasingStyle = Enum.EasingStyle[Option]
             end});
@@ -5300,7 +5300,7 @@ function Library:InitTargetHUD(opts)
     })
 
     local HudOuter = Library:Create("Frame", {
-        Size = dim_offset(240, 80),
+        Size = dim_offset(260, 78),
         Position = opts.Position or dim2(0.5, 50, 0.5, 50),
         BackgroundColor3 = themes.preset.outline,
         BorderSizePixel = 0,
@@ -5332,22 +5332,49 @@ function Library:InitTargetHUD(opts)
         Parent = HudMain,
     }); Library:Themify(TopAccent, "accent", "BackgroundColor3")
 
+    -- Avatar headshot (left)
+    local AvatarFrame = Library:Create("Frame", {
+        Size = dim_offset(52, 52),
+        Position = dim2(0, 8, 0, 12),
+        BackgroundColor3 = themes.preset.outline,
+        BorderSizePixel = 0,
+        ClipsDescendants = true,
+        Parent = HudMain,
+    }); Library:Themify(AvatarFrame, "outline", "BackgroundColor3")
+
+    local AvatarStroke = Library:Create("UIStroke", {
+        Parent = AvatarFrame,
+        Color = themes.preset.accent,
+        Thickness = 1,
+        Transparency = 0.2,
+    }); Library:Themify(AvatarStroke, "accent", "Color")
+
+    local Avatar = Library:Create("ImageLabel", {
+        Size = dim2(1, 0, 1, 0),
+        BackgroundTransparency = 1,
+        BorderSizePixel = 0,
+        Image = "",
+        ScaleType = Enum.ScaleType.Crop,
+        Parent = AvatarFrame,
+    })
+
     local Title = Library:Create("TextLabel", {
         BackgroundTransparency = 1,
-        Position = dim2(0, 10, 0, 8),
-        Size = dim2(1, -20, 0, 16),
+        Position = dim2(0, 68, 0, 10),
+        Size = dim2(1, -78, 0, 16),
         FontFace = Library.Font,
         TextSize = 13,
         TextXAlignment = Enum.TextXAlignment.Left,
         TextColor3 = themes.preset.text_color,
         Text = "target",
+        TextTruncate = Enum.TextTruncate.AtEnd,
         Parent = HudMain,
     }); Library:Themify(Title, "text_color", "TextColor3")
 
     local Info = Library:Create("TextLabel", {
         BackgroundTransparency = 1,
-        Position = dim2(0, 10, 0, 28),
-        Size = dim2(1, -20, 0, 14),
+        Position = dim2(0, 68, 0, 28),
+        Size = dim2(1, -78, 0, 14),
         FontFace = Library.Font,
         TextSize = 12,
         TextXAlignment = Enum.TextXAlignment.Left,
@@ -5357,8 +5384,8 @@ function Library:InitTargetHUD(opts)
     }); Library:Themify(Info, "text_color", "TextColor3")
 
     local BarBg = Library:Create("Frame", {
-        Size = dim2(1, -20, 0, 6),
-        Position = dim2(0, 10, 1, -18),
+        Size = dim2(1, -78, 0, 6),
+        Position = dim2(0, 68, 1, -16),
         BackgroundColor3 = themes.preset.outline,
         BorderSizePixel = 0,
         Parent = HudMain,
@@ -5374,6 +5401,7 @@ function Library:InitTargetHUD(opts)
     local enabled = opts.Enabled ~= false
     local currentPlayer = nil
     local healthConn = nil
+    local avatarToken = 0
     local api = {}
 
     local function updateHealth(hum)
@@ -5384,30 +5412,68 @@ function Library:InitTargetHUD(opts)
         Bar.Size = dim2(r, 0, 1, 0)
     end
 
+    local function loadAvatar(player)
+        avatarToken += 1
+        local token = avatarToken
+        Avatar.Image = ""
+        if not player then return end
+        task.spawn(function()
+            local ok, content = pcall(function()
+                return Players:GetUserThumbnailAsync(
+                    player.UserId,
+                    Enum.ThumbnailType.HeadShot,
+                    Enum.ThumbnailSize.Size100x100
+                )
+            end)
+            if token ~= avatarToken then return end
+            if ok and type(content) == "string" and content ~= "" then
+                Avatar.Image = content
+            else
+                -- fallback: bust / avatar
+                pcall(function()
+                    Avatar.Image = Players:GetUserThumbnailAsync(
+                        player.UserId,
+                        Enum.ThumbnailType.AvatarBust,
+                        Enum.ThumbnailSize.Size100x100
+                    )
+                end)
+            end
+        end)
+    end
+
     function api.SetTarget(player)
         if healthConn then healthConn:Disconnect(); healthConn = nil end
         currentPlayer = player
         if not player or not enabled then
             HudOuter.Visible = false
+            Avatar.Image = ""
             return
         end
         Title.Text = player.DisplayName or player.Name
         HudOuter.Visible = true
+        loadAvatar(player)
         local hum = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
         if hum then
             updateHealth(hum)
             healthConn = hum.HealthChanged:Connect(function() updateHealth(hum) end)
+        else
+            Info.Text = "hp — —/—"
+            Bar.Size = dim2(0, 0, 1, 0)
         end
     end
 
     function api.SetEnabled(v)
         enabled = not not v
-        if not enabled then HudOuter.Visible = false
-        elseif currentPlayer then api.SetTarget(currentPlayer) end
+        if not enabled then
+            HudOuter.Visible = false
+        elseif currentPlayer then
+            api.SetTarget(currentPlayer)
+        end
     end
 
     function api.Destroy()
         if healthConn then healthConn:Disconnect() end
+        avatarToken += 1
         ScreenGui:Destroy()
     end
 
@@ -5422,9 +5488,9 @@ function Library:InitTargetHUD(opts)
                     local hrp = plr.Character:FindFirstChild("HumanoidRootPart")
                     local hum = plr.Character:FindFirstChildOfClass("Humanoid")
                     if hrp and hum and hum.Health > 0 then
-                        local sp, on = Camera:WorldToViewportPoint(hrp.Position)
-                        if on then
-                            local d = (vec2(sp.X, sp.Y) - mousePos).Magnitude
+                        local sp, on = workspace.CurrentCamera:WorldToViewportPoint(hrp.Position)
+                        if on and sp.Z > 0 then
+                            local d = (Vector2.new(sp.X, sp.Y) - mousePos).Magnitude
                             if d < best then best = d; closest = plr end
                         end
                     end
@@ -5436,6 +5502,8 @@ function Library:InitTargetHUD(opts)
 
     return api
 end
+
+
 
 ----------------------------------------------------------------
 -- Chat Spy — full UI (logo, drag, clear) + lib theme
